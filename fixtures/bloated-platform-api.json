@@ -1,0 +1,363 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Bloated Platform API (fixture)",
+    "version": "1.0.0",
+    "description": "Synthetic API mimicking a large SaaS surface — many tags and verbose schemas for mcp-slim concierge benchmarks."
+  },
+  "tags": [
+    { "name": "users", "description": "User lifecycle, profiles, preferences, and identity management across regions" },
+    { "name": "billing", "description": "Subscriptions, invoices, payment methods, tax, and usage metering" },
+    { "name": "projects", "description": "Workspaces, projects, collaborators, and resource quotas" },
+    { "name": "deployments", "description": "Build pipelines, releases, rollbacks, and environment promotion" },
+    { "name": "analytics", "description": "Events, funnels, dashboards, and export jobs" },
+    { "name": "admin", "description": "Organization settings, SSO, audit logs, and compliance exports" }
+  ],
+  "paths": {
+    "/users": {
+      "get": {
+        "operationId": "listUsers",
+        "tags": ["users"],
+        "summary": "List all users in the organization with pagination and optional filters",
+        "description": "Returns a paginated list of users including metadata, roles, last login, MFA status, and regional data residency flags. Supports cursor-based pagination and complex filter expressions.",
+        "parameters": [
+          { "name": "cursor", "in": "query", "schema": { "type": "string" }, "description": "Opaque pagination cursor from previous response" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 }, "description": "Maximum records per page up to 200" },
+          { "name": "role", "in": "query", "schema": { "type": "string", "enum": ["admin", "member", "viewer"] }, "description": "Filter by assigned role" }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "operationId": "createUser",
+        "tags": ["users"],
+        "summary": "Provision a new user account with optional SSO linkage",
+        "description": "Creates a user, sends invite email, assigns default role, and optionally links to external IdP subject.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "description": "Primary email address for the user account" },
+                  "displayName": { "type": "string", "description": "Human-readable display name shown in UI" },
+                  "role": { "type": "string", "enum": ["admin", "member", "viewer"] },
+                  "sendInvite": { "type": "boolean", "default": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/users/{userId}": {
+      "get": {
+        "operationId": "getUser",
+        "tags": ["users"],
+        "summary": "Retrieve a single user by identifier",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Unique user identifier" }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "patch": {
+        "operationId": "updateUser",
+        "tags": ["users"],
+        "summary": "Partially update user profile fields",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "displayName": { "type": "string" },
+                  "role": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "OK" } }
+      },
+      "delete": {
+        "operationId": "deleteUser",
+        "tags": ["users"],
+        "summary": "Deactivate and schedule deletion of a user account",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "204": { "description": "No Content" } }
+      }
+    },
+    "/billing/subscriptions": {
+      "get": {
+        "operationId": "listSubscriptions",
+        "tags": ["billing"],
+        "summary": "List active and historical subscriptions",
+        "description": "Includes plan tier, seat count, renewal date, and proration metadata.",
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "operationId": "createSubscription",
+        "tags": ["billing"],
+        "summary": "Create a new subscription for the organization",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["planId"],
+                "properties": {
+                  "planId": { "type": "string" },
+                  "seats": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/billing/invoices": {
+      "get": {
+        "operationId": "listInvoices",
+        "tags": ["billing"],
+        "summary": "List invoices with status filters",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["draft", "open", "paid", "void"] } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/billing/invoices/{invoiceId}": {
+      "get": {
+        "operationId": "getInvoice",
+        "tags": ["billing"],
+        "summary": "Retrieve invoice PDF metadata and line items",
+        "parameters": [
+          { "name": "invoiceId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "tags": ["projects"],
+        "summary": "List projects the caller can access",
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "operationId": "createProject",
+        "tags": ["projects"],
+        "summary": "Create a new project workspace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "region": { "type": "string", "enum": ["eu", "us", "apac"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/projects/{projectId}": {
+      "get": {
+        "operationId": "getProject",
+        "tags": ["projects"],
+        "summary": "Get project details including quotas",
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/projects/{projectId}/members": {
+      "get": {
+        "operationId": "listProjectMembers",
+        "tags": ["projects"],
+        "summary": "List collaborators on a project",
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "operationId": "addProjectMember",
+        "tags": ["projects"],
+        "summary": "Invite a user to the project",
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["userId", "role"],
+                "properties": {
+                  "userId": { "type": "string" },
+                  "role": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/deployments": {
+      "get": {
+        "operationId": "listDeployments",
+        "tags": ["deployments"],
+        "summary": "List recent deployments across environments",
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "operationId": "createDeployment",
+        "tags": ["deployments"],
+        "summary": "Trigger a new deployment from a git ref",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["projectId", "ref"],
+                "properties": {
+                  "projectId": { "type": "string" },
+                  "ref": { "type": "string" },
+                  "environment": { "type": "string", "enum": ["preview", "staging", "production"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "202": { "description": "Accepted" } }
+      }
+    },
+    "/deployments/{deploymentId}": {
+      "get": {
+        "operationId": "getDeployment",
+        "tags": ["deployments"],
+        "summary": "Poll deployment status and logs URL",
+        "parameters": [
+          { "name": "deploymentId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "operationId": "rollbackDeployment",
+        "tags": ["deployments"],
+        "summary": "Rollback to previous successful deployment",
+        "parameters": [
+          { "name": "deploymentId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/analytics/events": {
+      "get": {
+        "operationId": "queryEvents",
+        "tags": ["analytics"],
+        "summary": "Query raw analytics events with SQL-like filters",
+        "parameters": [
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date-time" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "operationId": "trackEvent",
+        "tags": ["analytics"],
+        "summary": "Ingest a single analytics event",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "properties": { "type": "object", "additionalProperties": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "202": { "description": "Accepted" } }
+      }
+    },
+    "/analytics/exports": {
+      "post": {
+        "operationId": "createAnalyticsExport",
+        "tags": ["analytics"],
+        "summary": "Start an async export job to S3 or webhook",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["format", "range"],
+                "properties": {
+                  "format": { "type": "string", "enum": ["csv", "json", "parquet"] },
+                  "range": { "type": "object" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "202": { "description": "Accepted" } }
+      }
+    },
+    "/admin/audit-log": {
+      "get": {
+        "operationId": "listAuditLog",
+        "tags": ["admin"],
+        "summary": "List organization audit events for compliance review",
+        "parameters": [
+          { "name": "actor", "in": "query", "schema": { "type": "string" } },
+          { "name": "action", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/admin/sso": {
+      "get": {
+        "operationId": "getSsoConfig",
+        "tags": ["admin"],
+        "summary": "Retrieve SAML/OIDC SSO configuration",
+        "responses": { "200": { "description": "OK" } }
+      },
+      "put": {
+        "operationId": "updateSsoConfig",
+        "tags": ["admin"],
+        "summary": "Update SSO metadata and certificate rotation schedule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider": { "type": "string", "enum": ["saml", "oidc"] },
+                  "metadataUrl": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  }
+}

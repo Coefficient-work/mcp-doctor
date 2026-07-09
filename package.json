@@ -1,0 +1,55 @@
+{
+  "name": "mcp-slim",
+  "version": "0.1.0",
+  "description": "Shrink MCP tool menus from OpenAPI with progressive discovery. Free CLI + demo MCP server.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Louis Reid",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/louisreid/mcp-slim.git"
+  },
+  "bugs": {
+    "url": "https://github.com/louisreid/mcp-slim/issues"
+  },
+  "homepage": "https://github.com/louisreid/mcp-slim#readme",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "openapi",
+    "tokens",
+    "ai",
+    "agents",
+    "cli"
+  ],
+  "bin": {
+    "mcp-slim": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "fixtures",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build",
+    "test": "node --import tsx --test src/**/*.test.ts",
+    "analyze": "node dist/cli.js analyze --demo",
+    "demo": "node dist/cli.js serve --demo"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "commander": "^13.1.0",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
