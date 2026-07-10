@@ -5,6 +5,9 @@ import { Command } from "commander";
 import { buildMcpBundle } from "./build.js";
 import { getServerEntry, loadMcpConfig, resolveMcpConfigPath, } from "./config.js";
 import { formatCompetitorReport, loadRegistry } from "./competitors.js";
+import { formatStateOfMcpReport, loadBenchmarkCatalog, runBenchmark, } from "./benchmark.js";
+import { formatEvalReport, runEval } from "./eval.js";
+import { formatSuggestedFixes, suggestedFixesFromChecks } from "./improvements.js";
 import { formatInspectReport, inspectLiveMcp, mcpToolToApiTool } from "./inspect.js";
 import { demoFixturePath, loadOpenApi } from "./load.js";
 import { defaultOptimize } from "./optimize.js";
@@ -16,7 +19,7 @@ const program = new Command();
 program
     .name("mcp-doctor")
     .description("Agent-facing API QA ? score, inspect, and optimize MCP readiness")
-    .version("0.3.0");
+    .version("0.4.0");
 async function resolveSpec(spec) {
     if (spec === "--demo") {
         return demoFixturePath();
@@ -91,7 +94,12 @@ program
     const apiTools = live.tools.map(mcpToolToApiTool);
     const title = live.serverInfo?.name ?? serverName;
     const scorecard = runScorecard({ info: { title } }, apiTools);
-    const report = formatInspectReport(live, formatScorecardReport(scorecard));
+    const fixes = suggestedFixesFromChecks(scorecard.checks, apiTools);
+    const report = [
+        formatInspectReport(live, formatScorecardReport(scorecard)),
+        "",
+        formatSuggestedFixes(fixes),
+    ].join("\n");
     const payload = { live, scorecard };
     if (opts.json) {
         console.log(JSON.stringify(payload, null, 2));
@@ -218,6 +226,74 @@ program
     else {
         console.log(formatCompetitorReport(registry, opts.category));
     }
+});
+program
+    .command("eval [server]")
+    .description("BYOK agent eval ? task success, friction score, replay timeline")
+    .option("--config <path>", "Path to mcp.json")
+    .option("--url <url>", "MCP HTTP endpoint")
+    .option("-H, --header <key:value>", "HTTP header", (v, acc) => [...acc, v], [])
+    .option("-t, --task <text>", "Task for the agent to complete")
+    .option("-m, --model <name>", "OpenAI model", "gpt-4o-mini")
+    .option("--models <names>", "Comma-separated models for compatibility matrix")
+    .option("-o, --out <file>", "Write markdown report")
+    .option("--json", "Print JSON")
+    .action(async (server, opts) => {
+    let serverName;
+    let entry;
+    if (opts.url) {
+        serverName = server ?? "remote-mcp";
+        entry = { url: opts.url, headers: parseHeaders(opts.header) };
+    }
+    else {
+        if (!server) {
+            console.error("Usage: mcp-doctor eval <server> --task \"...\"");
+            process.exit(1);
+        }
+        serverName = server;
+        entry = getServerEntry(loadMcpConfig(resolveMcpConfigPath(opts.config)), serverName);
+    }
+    const task = opts.task ?? "List all MCP tools and describe what each one does.";
+    const models = opts.models?.split(",").map((s) => s.trim()) ?? [opts.model ?? "gpt-4o-mini"];
+    console.error(`Evaluating ${serverName} with ${models.join(", ")}...`);
+    const result = await runEval(entry, serverName, { task, models });
+    const report = formatEvalReport(result);
+    if (opts.json)
+        console.log(JSON.stringify(result, null, 2));
+    else
+        console.log(report);
+    if (opts.out) {
+        await writeFile(resolve(opts.out), report, "utf8");
+        console.error(`Wrote ${opts.out}`);
+    }
+});
+program
+    .command("benchmark")
+    .description("State of MCP Quality ? score public MCP servers from catalog")
+    .option("-c, --catalog <path>", "benchmark-catalog.json path")
+    .option("-o, --out <dir>", "Write reports directory", "./examples/reports")
+    .option("--limit <n>", "Max servers to run", (v) => parseInt(v, 10))
+    .option("--json", "Print summary JSON only")
+    .action(async (opts) => {
+    let entries = loadBenchmarkCatalog(opts.catalog);
+    if (opts.limit)
+        entries = entries.slice(0, opts.limit);
+    console.error(`Benchmarking ${entries.length} MCP servers...`);
+    const result = await runBenchmark(entries);
+    const summary = formatStateOfMcpReport(result.rows);
+    if (opts.json) {
+        console.log(JSON.stringify({ rows: result.rows }, null, 2));
+    }
+    else {
+        console.log(summary);
+    }
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(resolve(opts.out), { recursive: true });
+    await writeFile(resolve(opts.out, "STATE-OF-MCP-2026.md"), summary, "utf8");
+    for (const r of result.reports) {
+        await writeFile(resolve(opts.out, `${r.id}.md`), r.markdown, "utf8");
+    }
+    console.error(`Wrote ${result.reports.length} reports to ${opts.out}/`);
 });
 program
     .command("init")

@@ -1,0 +1,105 @@
+{
+  "servers": [
+    {
+      "id": "filesystem",
+      "name": "MCP Filesystem",
+      "category": "official",
+      "entry": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+      },
+      "defaultTask": "List the allowed directories and read one small file if present."
+    },
+    {
+      "id": "memory",
+      "name": "MCP Memory",
+      "category": "official",
+      "entry": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-memory"]
+      },
+      "defaultTask": "List available memory tools and describe what they do."
+    },
+    {
+      "id": "sequential-thinking",
+      "name": "MCP Sequential Thinking",
+      "category": "official",
+      "entry": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+      },
+      "defaultTask": "Use sequential thinking to plan how to test an MCP server."
+    },
+    {
+      "id": "everything",
+      "name": "MCP Everything (test server)",
+      "category": "official",
+      "entry": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-everything"]
+      },
+      "defaultTask": "List all tools and call one safe read-only tool."
+    },
+    {
+      "id": "time",
+      "name": "MCP Time",
+      "category": "official",
+      "entry": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-time"]
+      },
+      "defaultTask": "Get the current time in UTC."
+    },
+    {
+      "id": "fetch",
+      "name": "MCP Fetch",
+      "category": "official",
+      "entry": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-fetch"]
+      },
+      "defaultTask": "List fetch tools available (do not fetch external URLs unless required)."
+    },
+    {
+      "id": "git",
+      "name": "MCP Git",
+      "category": "community",
+      "entry": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-git", "--repository", "/tmp"]
+      },
+      "defaultTask": "List git tools and show repository status if possible."
+    },
+    {
+      "id": "sqlite",
+      "name": "MCP SQLite",
+      "category": "community",
+      "entry": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/tmp/mcp-doctor-test.db"]
+      },
+      "defaultTask": "List database tools available."
+    },
+    {
+      "id": "puppeteer",
+      "name": "MCP Puppeteer",
+      "category": "community",
+      "entry": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+      },
+      "defaultTask": "List browser automation tools (do not navigate unless required)."
+    },
+    {
+      "id": "brave-search",
+      "name": "MCP Brave Search",
+      "category": "community",
+      "entry": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+        "env": {}
+      },
+      "defaultTask": "List search tools (skip search if API key missing)."
+    }
+  ]
+}

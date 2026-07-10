@@ -1,4 +1,4 @@
-# Friend guide ó evaluate your company's MCP
+# Friend guide ù evaluate your company's MCP
 
 **Goal:** Connect to your team's MCP server (e.g. Vooma), run an agent-readiness scorecard, and send Louis a short feedback note.
 
@@ -53,10 +53,10 @@ npx github:louisreid/mcp-doctor inspect --url https://your-mcp-host/mcp \
 
 Vooma builds AI agents for freight (quote ? cover ? schedule). Internal MCP servers may be:
 
-- **Remote HTTP** ó URL + bearer token in Cursor MCP settings
-- **stdio** ó `command` + `args` launching a local bridge
+- **Remote HTTP** ù URL + bearer token in Cursor MCP settings
+- **stdio** ù `command` + `args` launching a local bridge
 
-Public docs ([docs.vooma.ai](https://docs.vooma.ai)) list Agent Toolkits and Public API as *under construction* ó your internal Cursor config is the source of truth.
+Public docs ([docs.vooma.ai](https://docs.vooma.ai)) list Agent Toolkits and Public API as *under construction* ù your internal Cursor config is the source of truth.
 
 **Don't have MCP in Cursor yet?** Ask your platform team for the MCP endpoint or stdio command used with Claude/Cursor. Template: [`examples/vooma-mcp.example.json`](../examples/vooma-mcp.example.json).
 
@@ -73,7 +73,12 @@ Public docs ([docs.vooma.ai](https://docs.vooma.ai)) list Agent Toolkits and Pub
 | Schema complexity | Deep JSON ? parameter mistakes |
 | Security smells | Credentials on GET, shell exec |
 
-**Not yet in v0.3:** live agent task evals, OpenAPI drift, GitHub CI. Coming next.
+**Not yet in v0.4 without API key:** agent eval requires `OPENAI_API_KEY` (BYOK). Static `inspect` and `benchmark` work without keys.
+
+## See real example reports
+
+- [State of MCP Quality 2026](../examples/reports/STATE-OF-MCP-2026.md)
+- [Filesystem server report](../examples/reports/filesystem.md)
 
 ---
 
@@ -93,8 +98,8 @@ npx github:louisreid/mcp-doctor competitors --category testing
 | `No MCP config found` | Pass `--config ~/.cursor/mcp.json` |
 | `Server "vooma" not in config` | Run `list` and use exact server name |
 | Connection timeout | VPN on? Token expired? Try from same machine where Cursor works |
-| `listTools` error | Auth header missing ó check Cursor MCP JSON |
-| HTTP fails, SSE works | Normal for older servers ó report still valid |
+| `listTools` error | Auth header missing ù check Cursor MCP JSON |
+| HTTP fails, SSE works | Normal for older servers ù report still valid |
 
 ---
 
@@ -102,4 +107,4 @@ npx github:louisreid/mcp-doctor competitors --category testing
 
 Open an issue: [github.com/louisreid/mcp-doctor/issues](https://github.com/louisreid/mcp-doctor/issues)
 
-Built by Louis Reid ó design partner eval for freight/logistics MCP quality.
+Built by Louis Reid ù design partner eval for freight/logistics MCP quality.
