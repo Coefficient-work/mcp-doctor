@@ -8,7 +8,7 @@ export function formatAnalyzeReport(
   optimized?: OptimizeResult,
 ): string {
   const lines: string[] = [
-    `# mcp-slim analysis: ${title}`,
+    `# mcp-doctor token analysis: ${title}`,
     "",
     `| Metric | Value |`,
     `|--------|-------|`,
@@ -28,20 +28,20 @@ export function formatAnalyzeReport(
   lines.push("", "## Top token consumers (baseline)", "");
   const ranked = perToolTokens(tools).sort((a, b) => b.tokens - a.tokens).slice(0, 10);
   for (const row of ranked) {
-    lines.push(`- \`${row.name}\` ó ${row.tokens} tokens`);
+    lines.push(`- \`${row.name}\` ù ${row.tokens} tokens`);
   }
 
   if (optimized) {
     lines.push("", "## Optimized tool surface", "");
     for (const tool of optimized.tools) {
-      lines.push(`- \`${tool.name}\` (${tool.tag}) ó ${tool.description.slice(0, 72)}Ö`);
+      lines.push(`- \`${tool.name}\` (${tool.tag}) ù ${tool.description.slice(0, 72)}ù`);
     }
   }
 
   lines.push(
     "",
     "---",
-    "_Token estimate: JSON-serialized MCP tool definitions ˜ 4 (concierge benchmark)._",
+    "_Token estimate: JSON-serialized MCP tool definitions ù 4 (concierge benchmark)._",
   );
 
   return lines.join("\n");

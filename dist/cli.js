@@ -3,16 +3,18 @@ import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { buildMcpBundle } from "./build.js";
+import { formatCompetitorReport, loadRegistry } from "./competitors.js";
 import { demoFixturePath, loadOpenApi } from "./load.js";
 import { defaultOptimize } from "./optimize.js";
 import { operationsFromDoc } from "./openapi.js";
 import { formatAnalyzeReport } from "./report.js";
+import { formatScorecardReport, runScorecard } from "./scorecard.js";
 import { runMcpServer } from "./serve.js";
 const program = new Command();
 program
-    .name("mcp-slim")
-    .description("Shrink MCP tool menus from OpenAPI � analyze, build, and serve")
-    .version("0.1.0");
+    .name("mcp-doctor")
+    .description("Agent-facing API QA ? score, test, and optimize MCP readiness from OpenAPI")
+    .version("0.2.0");
 async function resolveSpec(spec) {
     if (spec === "--demo") {
         return demoFixturePath();
@@ -23,8 +25,31 @@ async function resolveSpec(spec) {
     return resolve(spec);
 }
 program
+    .command("test")
+    .description("Run agent-readiness scorecard (static checks from OpenAPI)")
+    .argument("[spec]", "OpenAPI path or URL")
+    .option("--demo", "Use bundled demo API (default if spec omitted)")
+    .option("-o, --out <file>", "Write markdown report to file")
+    .option("--json", "Print JSON scorecard")
+    .action(async (spec, opts) => {
+    const useDemo = opts.demo || !spec;
+    const filePath = useDemo ? demoFixturePath() : await resolveSpec(spec);
+    const doc = await loadOpenApi(filePath);
+    const result = runScorecard(doc);
+    if (opts.json) {
+        console.log(JSON.stringify(result, null, 2));
+    }
+    else {
+        console.log(formatScorecardReport(result));
+    }
+    if (opts.out) {
+        await writeFile(resolve(opts.out), formatScorecardReport(result), "utf8");
+        console.error(`\nWrote ${opts.out}`);
+    }
+});
+program
     .command("analyze")
-    .description("Report baseline vs optimized token footprint")
+    .description("Report token footprint and optimization opportunities")
     .argument("[spec]", "OpenAPI path or URL")
     .option("--demo", "Use bundled demo API (default if spec omitted)")
     .option("-o, --out <file>", "Write markdown report to file")
@@ -61,9 +86,9 @@ program
     .description("Write optimized MCP tool bundle + Cursor config snippet")
     .argument("[spec]", "OpenAPI path or URL")
     .option("--demo", "Use bundled demo API (default if spec omitted)")
-    .option("-o, --out <dir>", "Output directory", "./mcp-slim-out")
+    .option("-o, --out <dir>", "Output directory", "./mcp-doctor-out")
     .option("-b, --budget <tokens>", "Token budget", parseInt)
-    .option("-n, --name <name>", "MCP server name in config", "mcp-slim")
+    .option("-n, --name <name>", "MCP server name in config", "mcp-doctor")
     .action(async (spec, opts) => {
     const useDemo = opts.demo || !spec;
     const filePath = useDemo ? demoFixturePath() : await resolveSpec(spec);
@@ -84,7 +109,7 @@ program
 });
 program
     .command("serve")
-    .description("Run stdio MCP server (demo mode � simulated API responses)")
+    .description("Run stdio MCP server (demo mode ? simulated API responses)")
     .argument("[spec]", "OpenAPI path or URL")
     .option("--demo", "Use bundled demo API (default if spec omitted)")
     .option("-b, --budget <tokens>", "Token budget", parseInt)
@@ -98,14 +123,28 @@ program
     await runMcpServer(optimized.tools, title);
 });
 program
+    .command("competitors")
+    .description("Show competitor map (from ChatGPT + desk research)")
+    .option("-c, --category <name>", "Filter: standards|generation|gateway|testing|adjacent")
+    .option("--json", "Print registry JSON")
+    .action((opts) => {
+    const registry = loadRegistry();
+    if (opts.json) {
+        console.log(JSON.stringify(registry, null, 2));
+    }
+    else {
+        console.log(formatCompetitorReport(registry, opts.category));
+    }
+});
+program
     .command("init")
     .description("Print ready-to-paste Cursor MCP config for the demo server")
     .action(async () => {
     const config = {
         mcpServers: {
-            "mcp-slim-demo": {
+            "mcp-doctor-demo": {
                 command: "npx",
-                args: ["-y", "github:louisreid/mcp-slim", "serve", "--demo"],
+                args: ["-y", "github:louisreid/mcp-doctor", "serve", "--demo"],
             },
         },
     };

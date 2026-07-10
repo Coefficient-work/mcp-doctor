@@ -1,0 +1,68 @@
+{
+  "updated": "2026-07-10",
+  "source": "ChatGPT Stripe Engineer conversation (Jun 2026) + Coefficient desk research",
+  "positioning": "Agent-facing API QA — prove agents can use your MCP before you ship",
+  "categories": {
+    "standards": {
+      "label": "Standards / registry / protocol",
+      "competitors": [
+        { "id": "mcp-official", "name": "MCP Official Ecosystem", "url": "https://modelcontextprotocol.io", "threat": "platform", "overlap": "Registry, spec, conformance baseline", "ourAngle": "Build on top — certification layer above protocol" },
+        { "id": "anthropic", "name": "Anthropic (+ Stainless)", "url": "https://www.anthropic.com/news/anthropic-acquires-stainless", "threat": "acquirer", "overlap": "SDK/MCP generation at scale", "ourAngle": "Test their customers' MCPs, don't generate" },
+        { "id": "openai-mcp", "name": "OpenAI MCP Connectors", "url": "https://developers.openai.com/api/docs/guides/tools-connectors-mcp", "threat": "platform", "overlap": "Multi-client compatibility target", "ourAngle": "Compatibility matrix includes ChatGPT" },
+        { "id": "cloudflare-mcp", "name": "Cloudflare MCP / Code Mode", "url": "https://blog.cloudflare.com/code-mode-mcp/", "threat": "medium", "overlap": "Token-efficient tool surfaces", "ourAngle": "Benchmark token + task success, not host servers" },
+        { "id": "pulsemcp", "name": "PulseMCP", "url": "https://www.pulsemcp.com", "threat": "low", "overlap": "Discovery/catalog", "ourAngle": "Source for public benchmark dataset" }
+      ]
+    },
+    "generation": {
+      "label": "MCP generation (crowded — avoid)",
+      "competitors": [
+        { "id": "stainless", "name": "Stainless", "url": "https://www.stainless.com/mcp/", "threat": "acquired", "overlap": "OpenAPI ? MCP", "ourAngle": "Partner lane — test what Stainless generates" },
+        { "id": "speakeasy", "name": "Speakeasy", "url": "https://www.speakeasy.com/product/mcp-server", "threat": "high", "overlap": "MCP generation + Gateway + Gram", "ourAngle": "CI scorecard for Speakeasy output" },
+        { "id": "gram", "name": "Gram (Speakeasy)", "url": "https://www.speakeasy.com/blog/release-gram-beta", "threat": "high", "overlap": "MCP curation/composition", "ourAngle": "Validate curated tool sets" },
+        { "id": "fern", "name": "Fern", "url": "https://buildwithfern.com", "threat": "medium", "overlap": "Docs, SDKs, MCP, Agent Score", "ourAngle": "MCP-specific regression CI vs docs score" },
+        { "id": "postman-mcp", "name": "Postman MCP Server", "url": "https://www.postman.com/product/mcp-server/", "threat": "medium", "overlap": "100+ tools from Postman workspace", "ourAngle": "Score bloat + agent task success" },
+        { "id": "api-to-mcp", "name": "API To MCP", "url": "https://www.producthunt.com/products/api-to-mcp", "threat": "low", "overlap": "Hosted MCP from APIs", "ourAngle": "Pre-publish readiness audit" },
+        { "id": "apidog", "name": "Apidog MCP", "url": "https://apidog.com", "threat": "low", "overlap": "Spec access for AI IDEs", "ourAngle": "Different buyer — we score agent readiness" },
+        { "id": "mintlify", "name": "Mintlify", "url": "https://mintlify.com", "threat": "low", "overlap": "Docs MCP for agents", "ourAngle": "Complement — docs vs tool execution" },
+        { "id": "inox", "name": "Inox", "url": "https://crevios.github.io/inox/", "threat": "low", "overlap": "OSS Stainless alternative", "ourAngle": "Same test harness for any generator" }
+      ]
+    },
+    "gateway": {
+      "label": "Gateway / deployment / auth (crowded — avoid head-on)",
+      "competitors": [
+        { "id": "speakeasy-gateway", "name": "Speakeasy MCP Gateway", "url": "https://www.speakeasy.com/blog/release-speakeasy-mcp-gateway", "threat": "high", "overlap": "OAuth, observability, distribution", "ourAngle": "Test before gateway — different layer" },
+        { "id": "docker-mcp", "name": "Docker MCP Catalog + Gateway", "url": "https://docs.docker.com/ai/mcp-catalog-and-toolkit/mcp-gateway/", "threat": "medium", "overlap": "Verified catalog, isolated execution", "ourAngle": "Score catalog entries publicly" },
+        { "id": "portkey", "name": "Portkey MCP Gateway", "url": "https://portkey.ai/features/mcp", "threat": "medium", "overlap": "Governed production MCP", "ourAngle": "Pre-prod QA, not runtime gateway" },
+        { "id": "composio", "name": "Composio", "url": "https://composio.dev", "threat": "low", "overlap": "App connectors + auth", "ourAngle": "Custom MCP QA, not connector marketplace" },
+        { "id": "smithery", "name": "Smithery", "url": "https://smithery.ai", "threat": "medium", "overlap": "Registry, gateway, OAuth, hosting", "ourAngle": "Validate before publish — design partner lane" },
+        { "id": "manufact", "name": "Manufact / Golf / Dedalus", "url": "https://www.ycombinator.com", "threat": "medium", "overlap": "YC MCP hosting/routing", "ourAngle": "CI partner, not hosting" }
+      ]
+    },
+    "testing": {
+      "label": "Testing / evals / quality (our lane)",
+      "competitors": [
+        { "id": "mcp-inspector", "name": "MCP Inspector (official)", "url": "https://github.com/modelcontextprotocol/inspector", "threat": "high", "overlap": "Manual debug + CLI listing", "ourAngle": "Productized scorecard + CI + agent tasks" },
+        { "id": "mcp-conformance", "name": "MCP Conformance (official)", "url": "https://github.com/modelcontextprotocol/conformance", "threat": "medium", "overlap": "Protocol compliance", "ourAngle": "Beyond protocol — agent job success" },
+        { "id": "mcp-eval", "name": "mcp-eval (Lastmile AI)", "url": "https://mcp-eval.ai", "threat": "high", "overlap": "LLM task evals on real MCP tools", "ourAngle": "CI product + drift + scorecard bundle" },
+        { "id": "mcpjam", "name": "MCPJam", "url": "https://www.mcpjam.com", "threat": "high", "overlap": "Testing, OAuth, CI health checks", "ourAngle": "API-team scorecard + public benchmark" },
+        { "id": "mcp-lint", "name": "MCP Lint", "url": "https://github.com/SamSi0322/mcp-lint", "threat": "medium", "overlap": "ESLint for MCP static checks", "ourAngle": "Superset — lint + tokens + evals" },
+        { "id": "mcp-playground", "name": "MCP Playground", "url": "https://www.mcpplayground.tech/lint", "threat": "low", "overlap": "Schema linter", "ourAngle": "Full readiness score" },
+        { "id": "spanly", "name": "Spanly", "url": "https://spanly.dev", "threat": "low", "overlap": "MCP observability/replay", "ourAngle": "Pre-ship vs production traces" },
+        { "id": "iris", "name": "Iris", "url": "https://iris-eval.com", "threat": "medium", "overlap": "MCP-native eval/observability", "ourAngle": "CI gate for API teams" },
+        { "id": "mcp-bench", "name": "MCP-Bench", "url": "https://github.com", "threat": "low", "overlap": "Research benchmarking", "ourAngle": "Commercial benchmark + audits" },
+        { "id": "braintrust", "name": "Braintrust", "url": "https://www.braintrust.dev", "threat": "medium", "overlap": "Generic agent evals", "ourAngle": "MCP-specific, not general LLM eval" },
+        { "id": "langsmith", "name": "LangSmith", "url": "https://www.langchain.com/langsmith", "threat": "medium", "overlap": "Agent observability + evals", "ourAngle": "OpenAPI/MCP drift focus" },
+        { "id": "futureagi", "name": "FutureAGI MCP Eval Guide", "url": "https://futureagi.com/blog/step-by-step-guide-mcp-evaluation-2026/", "threat": "low", "overlap": "Content/education", "ourAngle": "Own the tooling, not the blog post" }
+      ]
+    },
+    "adjacent": {
+      "label": "Adjacent (auth, browser, release)",
+      "competitors": [
+        { "id": "arcade", "name": "Arcade", "url": "https://arcade.dev", "threat": "low", "overlap": "Agent auth/actions", "ourAngle": "Different layer" },
+        { "id": "workos", "name": "WorkOS / Okta / 1Password", "url": "https://workos.com", "threat": "low", "overlap": "Enterprise agent identity", "ourAngle": "Auth clarity checks only" },
+        { "id": "browserbase", "name": "Browserbase / Browser Use", "url": "https://browserbase.com", "threat": "low", "overlap": "Browser agents", "ourAngle": "API MCP focus" },
+        { "id": "sentry-seer", "name": "Sentry Seer", "url": "https://sentry.io/product/seer/", "threat": "low", "overlap": "AI debugging from prod", "ourAngle": "Pre-release MCP regression" }
+      ]
+    }
+  }
+}

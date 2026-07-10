@@ -1,7 +1,7 @@
 import { perToolTokens, toolsTokenCount } from "./tokens.js";
 export function formatAnalyzeReport(title, tools, optimized) {
     const lines = [
-        `# mcp-slim analysis: ${title}`,
+        `# mcp-doctor token analysis: ${title}`,
         "",
         `| Metric | Value |`,
         `|--------|-------|`,

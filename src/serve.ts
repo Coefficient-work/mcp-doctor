@@ -12,7 +12,7 @@ export async function runMcpServer(tools: ApiTool[], serverTitle: string): Promi
   const toolMap = new Map(tools.map((t) => [t.name, t]));
 
   const server = new Server(
-    { name: "mcp-slim", version: "0.1.0" },
+    { name: "mcp-doctor", version: "0.2.0" },
     { capabilities: { tools: {} } },
   );
 
@@ -52,7 +52,7 @@ function formatDemoResponse(
     if (!action) {
       const names = tool.children.map((c) => `- ${c.name}: ${c.description.slice(0, 60)}`).join("\n");
       return [
-        `[mcp-slim demo] ${tool.name} ó progressive discovery for ${tool.tag}`,
+        `[mcp-doctor demo] ${tool.name} ù progressive discovery for ${tool.tag}`,
         "",
         "Pass `action` to invoke one of:",
         names,
@@ -61,24 +61,24 @@ function formatDemoResponse(
       ].join("\n");
     }
     if (!child) {
-      return `[mcp-slim demo] Unknown action "${action}". Valid: ${tool.children.map((c) => c.name).join(", ")}`;
+      return `[mcp-doctor demo] Unknown action "${action}". Valid: ${tool.children.map((c) => c.name).join(", ")}`;
     }
     return [
-      `[mcp-slim demo] ${serverTitle}`,
+      `[mcp-doctor demo] ${serverTitle}`,
       `Would call: ${child.method} ${child.path}`,
       `Operation: ${child.name}`,
       `Params: ${JSON.stringify(args.params ?? {}, null, 2)}`,
       "",
-      "This is a free demo server ó responses are simulated.",
+      "This is a free demo server ù responses are simulated.",
       "Production mode (real HTTP calls) coming soon.",
     ].join("\n");
   }
 
   return [
-    `[mcp-slim demo] ${serverTitle}`,
+    `[mcp-doctor demo] ${serverTitle}`,
     `Would call: ${tool.method} ${tool.path}`,
     `Args: ${JSON.stringify(args, null, 2)}`,
     "",
-    "Demo mode ó simulated response. Star github.com/louisreid/mcp-slim for updates.",
+    "Demo mode ù simulated response. Star github.com/louisreid/mcp-doctor for updates.",
   ].join("\n");
 }

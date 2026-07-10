@@ -27,13 +27,13 @@ export async function buildMcpBundle(
   const dir = resolve(outDir);
   await mkdir(dir, { recursive: true });
 
-  const serverName = options?.serverName ?? "mcp-slim";
+  const serverName = options?.serverName ?? "mcp-doctor";
   const specArg = options?.specArg ?? "--demo";
 
   const manifest = {
     name: title,
     version: doc.info?.version ?? "0.0.0",
-    generatedBy: "mcp-slim",
+    generatedBy: "mcp-doctor",
     baseline: {
       toolCount: baseline.length,
       tokens: toolsTokenCount(baseline),
@@ -62,16 +62,16 @@ export async function buildMcpBundle(
       "1. Copy the `cursor-mcp.json` snippet into your Cursor MCP settings",
       "   (or merge under `mcpServers`).",
       "2. Restart Cursor.",
-      "3. Ask the agent to list available tools ó you should see",
+      "3. Ask the agent to list available tools ù you should see",
       `   **${optimized.tools.length} discovery tools** instead of ${baseline.length} flat operations.`,
       "",
       "## One-liner (demo server)",
       "",
       "```bash",
-      "npx github:louisreid/mcp-slim serve --demo",
+      "npx github:louisreid/mcp-doctor serve --demo",
       "```",
       "",
-      "**Demo mode** returns simulated responses ó wire your API base URL in a future release.",
+      "**Demo mode** returns simulated responses ù wire your API base URL in a future release.",
     ].join("\n"),
     "utf8",
   );

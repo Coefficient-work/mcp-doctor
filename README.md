@@ -1,100 +1,106 @@
-# mcp-slim
+# mcp-doctor
 
-**Shrink MCP tool menus from OpenAPI** — progressive discovery cuts token bloat so agents see fewer tools upfront.
+**Agent-facing API QA** — prove agents can actually use your MCP before you ship.
 
-Free CLI + demo MCP server. No API key required.
+> *"We prove agents can actually use your MCP."*
+
+Free CLI scorecard + token analysis. No API key required.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## Why
 
-Large OpenAPI specs become huge MCP tool lists. Bloated menus waste context window and hurt tool-selection accuracy ([StackOne](https://www.stackone.com/blog/mcp-token-optimization/), [a16z MCP deep dive](https://a16z.com/a-deep-dive-into-mcp-and-the-future-of-ai-tooling/)).
+API teams ship MCP servers from OpenAPI (Stainless, Speakeasy, Postman). Agents still fail — wrong tools, schema drift, token bloat, missing auth clarity. **mcp-doctor** scores agent readiness and tracks the competitive landscape.
 
-**mcp-slim** groups operations by tag (progressive discovery), trims schemas, and reports token savings.
+## Try in 2 minutes
 
-## Try in 2 minutes (friend-friendly)
-
-### 1. Analyze the demo API
+### 1. Run the agent-readiness scorecard
 
 ```bash
-npx github:louisreid/mcp-slim analyze --demo
+npx github:louisreid/mcp-doctor test --demo
 ```
 
-Expected: ~**60% fewer tokens**, 24 operations ? 6 discovery tools.
+Checks: tool count, token footprint, descriptions, destructive ops, auth clarity, schema complexity, security smells.
 
-### 2. Analyze your own OpenAPI spec
+### 2. Analyze token optimization (from mcp-slim)
 
 ```bash
-npx github:louisreid/mcp-slim analyze ./openapi.json
-# or a URL:
-npx github:louisreid/mcp-slim analyze https://example.com/openapi.json
+npx github:louisreid/mcp-doctor analyze --demo
 ```
 
-### 3. Run the demo MCP server in Cursor
-
-Print config:
+### 3. Your own OpenAPI spec
 
 ```bash
-npx github:louisreid/mcp-slim init
+npx github:louisreid/mcp-doctor test ./openapi.json
+npx github:louisreid/mcp-doctor analyze ./openapi.json
 ```
 
-Paste the JSON into **Cursor ? Settings ? MCP** (merge under `mcpServers`), restart Cursor, then ask:
-
-> What MCP tools do you have?
-
-You should see **6 discovery tools** (users, billing, projects, …) instead of 24 flat operations.
-
-**Claude Desktop** — same JSON under `~/Library/Application Support/Claude/claude_desktop_config.json`.
-
-### 4. Build a bundle for sharing
+### 4. Competitor map
 
 ```bash
-npx github:louisreid/mcp-slim build ./openapi.json -o ./my-mcp
+npx github:louisreid/mcp-doctor competitors
+npx github:louisreid/mcp-doctor competitors --category testing
 ```
 
-Outputs `tools.json`, `cursor-mcp.json`, and `TRY-IN-CURSOR.md`.
+Tracks 30+ players from ChatGPT market research + Coefficient desk analysis. See [`docs/competitors/`](docs/competitors/README.md).
+
+### 5. Demo MCP server in Cursor
+
+```bash
+npx github:louisreid/mcp-doctor init
+```
+
+Paste into **Cursor ? Settings ? MCP**, restart, ask: *What MCP tools do you have?*
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `analyze [spec]` | Token report (default: bundled demo API) |
-| `build [spec]` | Write optimized tools + Cursor config |
-| `serve [spec]` | Stdio MCP server (**demo mode** — simulated responses) |
-| `init` | Print Cursor MCP config for demo server |
+| `test [spec]` | **Agent-readiness scorecard** (grade A–F) |
+| `analyze [spec]` | Token footprint + optimization report |
+| `competitors` | Competitor map (standards, generation, gateway, testing) |
+| `build [spec]` | Optimized tools + Cursor config |
+| `serve [spec]` | Demo stdio MCP server |
+| `init` | Cursor MCP config snippet |
 
-Options: `--demo`, `--budget <tokens>`, `-o` output path.
+## Roadmap (ChatGPT wedge)
 
-## Demo vs production
+| Week | Feature | Status |
+|------|---------|--------|
+| 1 | Static scorecard CLI | **v0.2** |
+| 2 | OpenAPI ? MCP drift detector | Planned |
+| 3 | Agent eval runner (BYOK) | Planned |
+| 4 | GitHub Action + PR scorecard | Planned |
+| Launch | "State of MCP Agent Readiness" benchmark | Planned |
 
-| Mode | Status |
-|------|--------|
-| **Demo** (`serve`) | Free — lists optimized tools, returns simulated responses |
-| **Production** (real HTTP) | Roadmap — star the repo for updates |
+## Pricing direction
+
+| Tier | Offer |
+|------|-------|
+| OSS CLI | Free — scorecard + competitor map |
+| Audit | £2k fixed agent-readiness report |
+| CI | £500–2k/mo regression monitoring |
 
 ## Develop locally
 
 ```bash
-git clone https://github.com/louisreid/mcp-slim.git
-cd mcp-slim
+git clone https://github.com/louisreid/mcp-doctor.git
+cd mcp-doctor
 pnpm install
 pnpm build
-node dist/cli.js analyze --demo
-node dist/cli.js serve --demo
+node dist/cli.js test --demo
+pnpm test
 ```
 
-## How optimization works
+## Renamed from mcp-slim
 
-1. **trim-descriptions** — cap verbose OpenAPI text  
-2. **slim-schema** — strip examples, shorten property docs  
-3. **group-by-tag** — one `discover_<tag>` tool per OpenAPI tag  
-4. **budget** (optional) — fit under a token cap  
+v0.1 shipped as **mcp-slim** (token optimization, A3 hypothesis). v0.2 pivots to **mcp-doctor** (D1 + eval wedge per ChatGPT research). Token analysis remains via `analyze`.
 
 ## Feedback
 
-Open an issue or PR: [github.com/louisreid/mcp-slim](https://github.com/louisreid/mcp-slim)
+Issues and PRs: [github.com/louisreid/mcp-doctor](https://github.com/louisreid/mcp-doctor)
 
-Built as part of [Coefficient](https://github.com/louisreid/coefficient) investigation (A3 hypothesis).
+Part of [Coefficient](https://github.com/louisreid/coefficient) investigation.
 
 ## License
 

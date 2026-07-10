@@ -5,7 +5,7 @@ import { toMcpTools } from "./mcp.js";
 export async function runMcpServer(tools, serverTitle) {
     const mcpTools = toMcpTools(tools);
     const toolMap = new Map(tools.map((t) => [t.name, t]));
-    const server = new Server({ name: "mcp-slim", version: "0.1.0" }, { capabilities: { tools: {} } });
+    const server = new Server({ name: "mcp-doctor", version: "0.2.0" }, { capabilities: { tools: {} } });
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
         tools: mcpTools,
     }));
@@ -33,7 +33,7 @@ function formatDemoResponse(tool, args, serverTitle) {
         if (!action) {
             const names = tool.children.map((c) => `- ${c.name}: ${c.description.slice(0, 60)}`).join("\n");
             return [
-                `[mcp-slim demo] ${tool.name} � progressive discovery for ${tool.tag}`,
+                `[mcp-doctor demo] ${tool.name} � progressive discovery for ${tool.tag}`,
                 "",
                 "Pass `action` to invoke one of:",
                 names,
@@ -42,10 +42,10 @@ function formatDemoResponse(tool, args, serverTitle) {
             ].join("\n");
         }
         if (!child) {
-            return `[mcp-slim demo] Unknown action "${action}". Valid: ${tool.children.map((c) => c.name).join(", ")}`;
+            return `[mcp-doctor demo] Unknown action "${action}". Valid: ${tool.children.map((c) => c.name).join(", ")}`;
         }
         return [
-            `[mcp-slim demo] ${serverTitle}`,
+            `[mcp-doctor demo] ${serverTitle}`,
             `Would call: ${child.method} ${child.path}`,
             `Operation: ${child.name}`,
             `Params: ${JSON.stringify(args.params ?? {}, null, 2)}`,
@@ -55,10 +55,10 @@ function formatDemoResponse(tool, args, serverTitle) {
         ].join("\n");
     }
     return [
-        `[mcp-slim demo] ${serverTitle}`,
+        `[mcp-doctor demo] ${serverTitle}`,
         `Would call: ${tool.method} ${tool.path}`,
         `Args: ${JSON.stringify(args, null, 2)}`,
         "",
-        "Demo mode � simulated response. Star github.com/louisreid/mcp-slim for updates.",
+        "Demo mode � simulated response. Star github.com/louisreid/mcp-doctor for updates.",
     ].join("\n");
 }

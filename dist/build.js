@@ -11,12 +11,12 @@ export async function buildMcpBundle(doc, outDir, options) {
     const mcpTools = toMcpTools(optimized.tools);
     const dir = resolve(outDir);
     await mkdir(dir, { recursive: true });
-    const serverName = options?.serverName ?? "mcp-slim";
+    const serverName = options?.serverName ?? "mcp-doctor";
     const specArg = options?.specArg ?? "--demo";
     const manifest = {
         name: title,
         version: doc.info?.version ?? "0.0.0",
-        generatedBy: "mcp-slim",
+        generatedBy: "mcp-doctor",
         baseline: {
             toolCount: baseline.length,
             tokens: toolsTokenCount(baseline),
@@ -44,7 +44,7 @@ export async function buildMcpBundle(doc, outDir, options) {
         "## One-liner (demo server)",
         "",
         "```bash",
-        "npx github:louisreid/mcp-slim serve --demo",
+        "npx github:louisreid/mcp-doctor serve --demo",
         "```",
         "",
         "**Demo mode** returns simulated responses � wire your API base URL in a future release.",

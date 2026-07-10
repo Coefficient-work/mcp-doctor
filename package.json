@@ -1,33 +1,36 @@
 {
-  "name": "mcp-slim",
-  "version": "0.1.0",
-  "description": "Shrink MCP tool menus from OpenAPI with progressive discovery. Free CLI + demo MCP server.",
+  "name": "mcp-doctor",
+  "version": "0.2.0",
+  "description": "Agent-facing API QA — score MCP readiness, analyze tokens, and catch regressions before agents fail.",
   "type": "module",
   "license": "MIT",
   "author": "Louis Reid",
   "repository": {
     "type": "git",
-    "url": "https://github.com/louisreid/mcp-slim.git"
+    "url": "https://github.com/louisreid/mcp-doctor.git"
   },
   "bugs": {
-    "url": "https://github.com/louisreid/mcp-slim/issues"
+    "url": "https://github.com/louisreid/mcp-doctor/issues"
   },
-  "homepage": "https://github.com/louisreid/mcp-slim#readme",
+  "homepage": "https://github.com/louisreid/mcp-doctor#readme",
   "keywords": [
     "mcp",
     "model-context-protocol",
     "openapi",
-    "tokens",
-    "ai",
     "agents",
+    "evaluation",
+    "ci",
+    "qa",
     "cli"
   ],
   "bin": {
-    "mcp-slim": "./dist/cli.js"
+    "mcp-doctor": "./dist/cli.js"
   },
   "files": [
     "dist",
     "fixtures",
+    "competitors",
+    "docs",
     "README.md",
     "LICENSE"
   ],
@@ -36,8 +39,8 @@
     "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "test": "node --import tsx --test src/**/*.test.ts",
-    "analyze": "node dist/cli.js analyze --demo",
-    "demo": "node dist/cli.js serve --demo"
+    "test:demo": "node dist/cli.js test --demo",
+    "analyze": "node dist/cli.js analyze --demo"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
