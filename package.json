@@ -1,6 +1,6 @@
 {
   "name": "mcp-doctor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Agent-facing API QA — score MCP readiness, analyze tokens, and catch regressions before agents fail.",
   "type": "module",
   "license": "MIT",
@@ -31,6 +31,7 @@
     "fixtures",
     "competitors",
     "docs",
+    "examples",
     "README.md",
     "LICENSE"
   ],

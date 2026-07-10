@@ -1,0 +1,11 @@
+{
+  "_readme": "Copy fields into ~/.cursor/mcp.json under mcpServers.vooma — get real values from your team",
+  "mcpServers": {
+    "vooma": {
+      "url": "https://YOUR-VOOMA-MCP-ENDPOINT.example/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    }
+  }
+}
