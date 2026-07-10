@@ -73,7 +73,13 @@ Public docs ([docs.vooma.ai](https://docs.vooma.ai)) list Agent Toolkits and Pub
 | Schema complexity | Deep JSON ? parameter mistakes |
 | Security smells | Credentials on GET, shell exec |
 
-**Not yet in v0.4 without API key:** agent eval requires `OPENAI_API_KEY` (BYOK). Static `inspect` and `benchmark` work without keys.
+**Not yet in v0.4 without API key:** agent eval requires `AI_GATEWAY_API_KEY` (Vercel AI Gateway free trial — BYOK). Static `inspect` and `benchmark` work without keys.
+
+Get a key: [vercel.com/ai-gateway](https://vercel.com/ai-gateway) ? create key ? `export AI_GATEWAY_API_KEY=...`
+
+```bash
+npx github:louisreid/mcp-doctor eval memory --task "List all tools" -o eval.md
+```
 
 ## See real example reports
 

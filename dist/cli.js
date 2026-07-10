@@ -2,6 +2,8 @@
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Command } from "commander";
+import { loadEnvLocal } from "./env.js";
+loadEnvLocal();
 import { buildMcpBundle } from "./build.js";
 import { getServerEntry, loadMcpConfig, resolveMcpConfigPath, } from "./config.js";
 import { formatCompetitorReport, loadRegistry } from "./competitors.js";
@@ -234,7 +236,7 @@ program
     .option("--url <url>", "MCP HTTP endpoint")
     .option("-H, --header <key:value>", "HTTP header", (v, acc) => [...acc, v], [])
     .option("-t, --task <text>", "Task for the agent to complete")
-    .option("-m, --model <name>", "OpenAI model", "gpt-4o-mini")
+    .option("-m, --model <name>", "AI Gateway model slug (e.g. openai/gpt-4o-mini)", "openai/gpt-4o-mini")
     .option("--models <names>", "Comma-separated models for compatibility matrix")
     .option("-o, --out <file>", "Write markdown report")
     .option("--json", "Print JSON")
@@ -254,7 +256,7 @@ program
         entry = getServerEntry(loadMcpConfig(resolveMcpConfigPath(opts.config)), serverName);
     }
     const task = opts.task ?? "List all MCP tools and describe what each one does.";
-    const models = opts.models?.split(",").map((s) => s.trim()) ?? [opts.model ?? "gpt-4o-mini"];
+    const models = opts.models?.split(",").map((s) => s.trim()) ?? [opts.model ?? "openai/gpt-4o-mini"];
     console.error(`Evaluating ${serverName} with ${models.join(", ")}...`);
     const result = await runEval(entry, serverName, { task, models });
     const report = formatEvalReport(result);

@@ -1,18 +1,21 @@
+import { generateText, jsonSchema, stepCountIs, tool } from "ai";
 import { callMcpTool, connectMcpSession } from "./mcp-client.js";
 import { computeFriction, formatFrictionReport, formatReplayTimeline, } from "./friction.js";
 export async function runEval(entry, serverName, options) {
+    assertGatewayAuth();
     const session = await connectMcpSession(entry, serverName, options.timeoutMs ?? 45_000);
-    const models = options.models ?? [defaultModel(options.provider ?? "openai")];
+    const models = options.models ?? [defaultModel()];
     const results = [];
     try {
         for (const model of models) {
-            const provider = options.provider ?? modelProviderFor(model);
+            const gatewayModel = normalizeGatewayModel(model);
+            const provider = modelProviderFor(gatewayModel);
             try {
-                results.push(await runSingleModelEval(session, model, provider, options.task, options.maxSteps ?? 8));
+                results.push(await runSingleModelEval(session, gatewayModel, provider, options.task, options.maxSteps ?? 8));
             }
             catch (e) {
                 results.push({
-                    model,
+                    model: gatewayModel,
                     provider,
                     succeeded: false,
                     friction: computeFriction([], false),
@@ -29,123 +32,138 @@ export async function runEval(entry, serverName, options) {
 }
 async function runSingleModelEval(session, model, provider, task, maxSteps) {
     const events = [];
-    let step = 0;
-    const openAiTools = session.tools.map(mcpToolToOpenAi);
-    const messages = [
-        {
-            role: "system",
-            content: "You complete tasks using MCP tools. Call tools when needed. Be concise. Stop when the task is done and summarize.",
-        },
-        { role: "user", content: task },
-    ];
-    events.push({ step: ++step, type: "assistant", summary: `Task: ${task.slice(0, 120)}` });
-    let succeeded = false;
-    let finalAnswer;
-    for (let i = 0; i < maxSteps; i++) {
-        const t0 = Date.now();
-        const response = await chatCompletion(provider, model, messages, openAiTools);
-        const assistantMsg = response.choices[0]?.message;
-        if (assistantMsg?.content) {
+    let stepNum = 0;
+    events.push({ step: ++stepNum, type: "assistant", summary: `Task: ${task.slice(0, 120)}` });
+    const tools = buildAiTools(session);
+    const t0 = Date.now();
+    const result = await generateText({
+        model,
+        tools,
+        stopWhen: stepCountIs(maxSteps),
+        system: "You complete tasks using MCP tools. Call tools when needed. Be concise. Stop when the task is done and summarize.",
+        prompt: task,
+    });
+    const latencyMs = Date.now() - t0;
+    for (const s of result.steps) {
+        if (s.text) {
             events.push({
-                step: ++step,
+                step: ++stepNum,
                 type: "assistant",
-                summary: assistantMsg.content.slice(0, 200),
-                latencyMs: Date.now() - t0,
+                summary: s.text.slice(0, 200),
+                latencyMs: stepNum === 2 ? latencyMs : undefined,
             });
-            finalAnswer = assistantMsg.content;
         }
-        const toolCalls = assistantMsg?.tool_calls ?? [];
-        if (toolCalls.length === 0) {
-            succeeded = /done|complete|success|here is|result|listed|found/i.test(assistantMsg?.content ?? "");
-            break;
-        }
-        messages.push(assistantMsg);
-        for (const tc of toolCalls) {
-            const fn = tc.function;
-            const args = JSON.parse(fn.arguments || "{}");
+        for (const tc of s.toolCalls) {
             events.push({
-                step: ++step,
+                step: ++stepNum,
                 type: "tool_call",
-                toolName: fn.name,
-                summary: `Call ${fn.name}`,
-                detail: JSON.stringify(args).slice(0, 150),
+                toolName: tc.toolName,
+                summary: `Call ${tc.toolName}`,
+                detail: JSON.stringify(tc.input).slice(0, 150),
             });
-            let toolText;
-            let isError = false;
-            try {
-                const out = await callMcpTool(session, fn.name, args);
-                toolText = out.text;
-                isError = out.isError;
-            }
-            catch (e) {
-                toolText = e instanceof Error ? e.message : String(e);
-                isError = true;
-            }
+        }
+        for (const tr of s.toolResults) {
+            const output = formatToolOutput(tr.output);
+            const isError = isToolErrorOutput(tr.output);
             events.push({
-                step: ++step,
+                step: ++stepNum,
                 type: isError ? "error" : "tool_result",
-                toolName: fn.name,
-                summary: toolText.slice(0, 120),
-                detail: toolText.slice(0, 500),
+                toolName: tr.toolName,
+                summary: output.slice(0, 120),
+                detail: output.slice(0, 500),
                 isError,
-            });
-            messages.push({
-                role: "tool",
-                tool_call_id: tc.id,
-                content: toolText.slice(0, 8000),
             });
         }
     }
+    const finalAnswer = result.text || undefined;
+    const succeeded = result.finishReason === "stop" &&
+        /done|complete|success|here is|result|listed|found|tools?/i.test(finalAnswer ?? "");
     const friction = computeFriction(events, succeeded);
-    return { model, provider, succeeded, friction, events, finalAnswer };
-}
-function mcpToolToOpenAi(tool) {
     return {
-        type: "function",
-        function: {
-            name: tool.name,
-            description: tool.description ?? tool.name,
-            parameters: tool.inputSchema ?? { type: "object", properties: {} },
+        model,
+        provider,
+        succeeded,
+        friction,
+        events,
+        finalAnswer,
+        usage: {
+            inputTokens: result.usage?.inputTokens,
+            outputTokens: result.usage?.outputTokens,
+            totalTokens: result.usage?.totalTokens,
         },
     };
 }
-async function chatCompletion(provider, model, messages, tools) {
-    if (provider === "openai") {
-        const key = process.env.OPENAI_API_KEY;
-        if (!key)
-            throw new Error("OPENAI_API_KEY required for eval (BYOK)");
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${key}`,
-                "Content-Type": "application/json",
+function buildAiTools(session) {
+    const tools = {};
+    for (const mcpTool of session.tools) {
+        tools[mcpTool.name] = tool({
+            description: mcpTool.description ?? mcpTool.name,
+            inputSchema: jsonSchema(mcpInputSchema(mcpTool)),
+            execute: async (args) => {
+                const out = await callMcpTool(session, mcpTool.name, args);
+                if (out.isError)
+                    return { error: true, text: out.text };
+                return out.text;
             },
-            body: JSON.stringify({ model, messages, tools, tool_choice: "auto" }),
         });
-        if (!res.ok)
-            throw new Error(`OpenAI ${res.status}: ${await res.text()}`);
-        return (await res.json());
     }
-    throw new Error("Anthropic eval not yet implemented � use --provider openai or gpt-4o-mini");
+    return tools;
 }
-function defaultModel(provider) {
-    return provider === "openai" ? "gpt-4o-mini" : "claude-sonnet-4-20250514";
+function mcpInputSchema(mcpTool) {
+    const schema = mcpTool.inputSchema;
+    if (schema && typeof schema === "object") {
+        return schema;
+    }
+    return { type: "object", properties: {} };
+}
+function formatToolOutput(output) {
+    if (typeof output === "string")
+        return output;
+    if (output && typeof output === "object" && "text" in output) {
+        return String(output.text);
+    }
+    return JSON.stringify(output);
+}
+function isToolErrorOutput(output) {
+    return Boolean(output &&
+        typeof output === "object" &&
+        "error" in output &&
+        output.error === true);
+}
+function assertGatewayAuth() {
+    if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN)
+        return;
+    throw new Error("AI_GATEWAY_API_KEY required for eval. Get a free key at https://vercel.com/ai-gateway " +
+        "(or run `vercel env pull` for OIDC). Keys stay local � never stored by mcp-doctor.");
+}
+function normalizeGatewayModel(model) {
+    if (model.includes("/"))
+        return model;
+    if (model.startsWith("claude"))
+        return `anthropic/${model}`;
+    return `openai/${model}`;
+}
+function defaultModel() {
+    return "openai/gpt-4o-mini";
 }
 function modelProviderFor(model) {
-    if (model.startsWith("claude"))
+    if (model.startsWith("anthropic/"))
         return "anthropic";
-    return "openai";
+    if (model.startsWith("openai/"))
+        return "openai";
+    return "gateway";
 }
 export function formatModelMatrix(results) {
     const lines = [
         "## Model Compatibility Matrix",
         "",
-        "| Model | Success | Friction |",
-        "|-------|---------|----------|",
+        "| Model | Success | Friction | Tokens |",
+        "|-------|---------|----------|--------|",
     ];
     for (const r of results) {
         const ok = r.error ? "error" : r.succeeded ? "pass" : "fail";
-        lines.push(`| ${r.model} | ${ok} | ${r.friction.score} |`);
+        const tokens = r.usage?.totalTokens ?? "�";
+        lines.push(`| ${r.model} | ${ok} | ${r.friction.score} | ${tokens} |`);
     }
     return lines.join("\n");
 }
@@ -154,6 +172,8 @@ export function formatEvalReport(result) {
         `# Agent Eval: ${result.serverName}`,
         "",
         `**Task:** ${result.task}`,
+        "",
+        "_Powered by [Vercel AI SDK](https://ai-sdk.dev) + [AI Gateway](https://vercel.com/ai-gateway)_",
         "",
         formatModelMatrix(result.models),
         "",

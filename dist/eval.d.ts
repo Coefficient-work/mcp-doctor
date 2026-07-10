@@ -1,10 +1,9 @@
 import type { McpServerEntry } from "./config.js";
 import { computeFriction, type ReplayEvent } from "./friction.js";
-export type ModelProvider = "openai" | "anthropic";
+export type ModelProvider = "openai" | "anthropic" | "gateway";
 export type EvalOptions = {
     task: string;
     models?: string[];
-    provider?: ModelProvider;
     maxSteps?: number;
     timeoutMs?: number;
 };
@@ -16,6 +15,11 @@ export type ModelEvalResult = {
     events: ReplayEvent[];
     finalAnswer?: string;
     error?: string;
+    usage?: {
+        inputTokens?: number;
+        outputTokens?: number;
+        totalTokens?: number;
+    };
 };
 export type EvalResult = {
     serverName: string;

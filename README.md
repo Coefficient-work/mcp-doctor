@@ -1,6 +1,6 @@
-# mcp-doctor ó Agent Readiness Platform (MCP wedge)
+# mcp-doctor ? Agent Readiness Platform (MCP wedge)
 
-**Agent-facing API QA** ó score, inspect, evaluate, and improve MCP quality.
+**Agent-facing API QA** ? score, inspect, evaluate, and improve MCP quality.
 
 > *"We prove agents can actually use your MCP."*
 
@@ -8,7 +8,7 @@
 
 ## Real benchmark results
 
-**[State of MCP Quality 2026 (v0)](examples/reports/STATE-OF-MCP-2026.md)** ó 10 public servers scored live:
+**[State of MCP Quality 2026 (v0)](examples/reports/STATE-OF-MCP-2026.md)** ? 10 public servers scored live:
 
 | Server | Grade | Tools | Tokens |
 |--------|-------|-------|--------|
@@ -44,11 +44,20 @@ npx github:louisreid/mcp-doctor benchmark
 npx github:louisreid/mcp-doctor list
 npx github:louisreid/mcp-doctor inspect <name> -o report.md
 
-# Agent eval (BYOK ó your OpenAI key, local only)
-export OPENAI_API_KEY=sk-...
+# Agent eval (BYOK ù Vercel AI Gateway free trial, local only)
+export AI_GATEWAY_API_KEY=...
 npx github:louisreid/mcp-doctor eval memory \
   --task "List all tools and describe them" \
-  --models gpt-4o-mini,gpt-4o -o eval-report.md
+  --models openai/gpt-4o-mini,openai/gpt-4o -o eval-report.md
+```
+
+### AI Gateway setup (one-time)
+
+```bash
+vercel login
+cd mcp-doctor && vercel link
+vercel ai-gateway api-keys create --name mcp-doctor-local --budget 5 --refresh-period monthly
+# Key saved to .env.local (gitignored) ó CLI auto-loads it for eval
 ```
 
 ## Pain Interview (before sending to friends)
@@ -61,10 +70,10 @@ See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md) and Coefficient [`PAIN-INTERV
 
 | Command | Description |
 |---------|-------------|
-| `benchmark` | State of MCP Quality ó score catalog servers |
+| `benchmark` | State of MCP Quality ? score catalog servers |
 | `list` | MCP servers in `~/.cursor/mcp.json` |
 | `inspect <name>` | Live connect + scorecard + suggested fixes |
-| `eval <name> --task "..."` | BYOK agent eval + friction + replay |
+| `eval <name> --task "..."` | BYOK agent eval + friction + replay (Vercel AI Gateway) |
 | `test --demo` | Static scorecard on OpenAPI fixture |
 | `competitors` | 36-player market map |
 
@@ -82,4 +91,4 @@ See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md) and Coefficient [`PAIN-INTERV
 
 ## License
 
-MIT ó [Coefficient](https://github.com/louisreid/coefficient) investigation
+MIT ? [Coefficient](https://github.com/louisreid/coefficient) investigation
