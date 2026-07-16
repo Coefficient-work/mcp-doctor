@@ -1,0 +1,33 @@
+name: improvement-loop
+
+on:
+  schedule:
+    - cron: "0 6,12,18 * * *"
+  workflow_dispatch:
+
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm test
+      - run: pnpm build
+      - run: mkdir -p runs
+      - name: Benchmark
+        run: node dist/cli.js benchmark --json --limit 5 > runs/benchmark.json
+        continue-on-error: true
+      - name: Competitors snapshot
+        run: node dist/cli.js competitors --category testing > runs/competitors.txt
+      - name: Upload observe artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: observe-${{ github.run_id }}
+          path: runs/

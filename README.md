@@ -1,10 +1,12 @@
 # mcp-doctor ? Agent Readiness Platform (MCP wedge)
 
-**Agent-facing API QA** ? score, inspect, evaluate, and improve MCP quality.
+**The easiest way to score MCP agent readiness.**
+
+Open-source CLI — inspect, benchmark, and eval MCP servers before agents hit production.
 
 > *"We prove agents can actually use your MCP."*
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Site](https://img.shields.io/badge/site-coefficient.work-black)](https://coefficient.work)
 
 ## Real benchmark results
 
