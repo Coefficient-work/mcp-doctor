@@ -23,7 +23,7 @@ Open-source CLI ó inspect, benchmark, and eval MCP servers before agents hit pro
 Per-server reports: [`examples/reports/`](examples/reports/)
 
 ```bash
-npx github:louisreid/mcp-doctor benchmark -o ./reports
+npx github:coefficient-ai/mcp-doctor benchmark -o ./reports
 ```
 
 ## Three pillars
@@ -40,15 +40,15 @@ Plus: **Recommended Improvements**, **Replay Timeline**, **Model Compatibility M
 
 ```bash
 # Benchmark public MCPs
-npx github:louisreid/mcp-doctor benchmark
+npx github:coefficient-ai/mcp-doctor benchmark
 
 # Inspect your Cursor MCP server
-npx github:louisreid/mcp-doctor list
-npx github:louisreid/mcp-doctor inspect <name> -o report.md
+npx github:coefficient-ai/mcp-doctor list
+npx github:coefficient-ai/mcp-doctor inspect <name> -o report.md
 
 # Agent eval (BYOK ù Vercel AI Gateway free trial, local only)
 export AI_GATEWAY_API_KEY=...
-npx github:louisreid/mcp-doctor eval memory \
+npx github:coefficient-ai/mcp-doctor eval memory \
   --task "List all tools and describe them" \
   --models openai/gpt-4o-mini,openai/gpt-4o -o eval-report.md
 ```
@@ -64,7 +64,7 @@ vercel ai-gateway api-keys create --name mcp-doctor-local --budget 5 --refresh-p
 
 ## Pain Interview (before sending to friends)
 
-See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md) and Coefficient [`PAIN-INTERVIEW.md`](https://github.com/louisreid/coefficient/blob/main/research/design-partners/PAIN-INTERVIEW.md).
+See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md) and Coefficient [`PAIN-INTERVIEW.md`](https://github.com/coefficient-ai/coefficient/blob/main/research/design-partners/PAIN-INTERVIEW.md).
 
 **Do not** ask friends to beta-test until you've run a 30-min workflow interview.
 
@@ -93,4 +93,4 @@ See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md) and Coefficient [`PAIN-INTERV
 
 ## License
 
-MIT ? [Coefficient](https://github.com/louisreid/coefficient) investigation
+MIT ? [Coefficient](https://github.com/coefficient-ai/coefficient) investigation

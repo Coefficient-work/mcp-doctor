@@ -12,7 +12,7 @@
 ### 1. See what MCP servers you have configured
 
 ```bash
-npx github:louisreid/mcp-doctor list
+npx github:coefficient-ai/mcp-doctor list
 ```
 
 Looks in `~/.cursor/mcp.json` (and Claude Desktop config on Mac). You should see server names like `vooma`, `vooma-production`, etc.
@@ -22,13 +22,13 @@ Looks in `~/.cursor/mcp.json` (and Claude Desktop config on Mac). You should see
 Replace `vooma` with the exact name from step 1:
 
 ```bash
-npx github:louisreid/mcp-doctor inspect vooma
+npx github:coefficient-ai/mcp-doctor inspect vooma
 ```
 
 Save the report:
 
 ```bash
-npx github:louisreid/mcp-doctor inspect vooma -o vooma-mcp-report.md
+npx github:coefficient-ai/mcp-doctor inspect vooma -o vooma-mcp-report.md
 ```
 
 Email or Slack the `.md` file to Louis, plus fill in the **Feedback** section at the bottom.
@@ -36,13 +36,13 @@ Email or Slack the `.md` file to Louis, plus fill in the **Feedback** section at
 ### 3. If you use a custom config path
 
 ```bash
-npx github:louisreid/mcp-doctor inspect vooma --config /path/to/mcp.json -o report.md
+npx github:coefficient-ai/mcp-doctor inspect vooma --config /path/to/mcp.json -o report.md
 ```
 
 ### 4. If you have a direct MCP URL (no Cursor config)
 
 ```bash
-npx github:louisreid/mcp-doctor inspect --url https://your-mcp-host/mcp \
+npx github:coefficient-ai/mcp-doctor inspect --url https://your-mcp-host/mcp \
   --header "Authorization:Bearer YOUR_TOKEN" \
   -o report.md
 ```
@@ -78,7 +78,7 @@ Public docs ([docs.vooma.ai](https://docs.vooma.ai)) list Agent Toolkits and Pub
 Get a key: [vercel.com/ai-gateway](https://vercel.com/ai-gateway) ? create key ? `export AI_GATEWAY_API_KEY=...`
 
 ```bash
-npx github:louisreid/mcp-doctor eval memory --task "List all tools" -o eval.md
+npx github:coefficient-ai/mcp-doctor eval memory --task "List all tools" -o eval.md
 ```
 
 ## See real example reports
@@ -91,8 +91,8 @@ npx github:louisreid/mcp-doctor eval memory --task "List all tools" -o eval.md
 ## Try the demo (no Vooma access needed)
 
 ```bash
-npx github:louisreid/mcp-doctor test --demo
-npx github:louisreid/mcp-doctor competitors --category testing
+npx github:coefficient-ai/mcp-doctor test --demo
+npx github:coefficient-ai/mcp-doctor competitors --category testing
 ```
 
 ---
@@ -111,6 +111,6 @@ npx github:louisreid/mcp-doctor competitors --category testing
 
 ## Questions?
 
-Open an issue: [github.com/louisreid/mcp-doctor/issues](https://github.com/louisreid/mcp-doctor/issues)
+Open an issue: [github.com/coefficient-ai/mcp-doctor/issues](https://github.com/coefficient-ai/mcp-doctor/issues)
 
 Built by Louis Reid ù design partner eval for freight/logistics MCP quality.

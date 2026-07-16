@@ -7,12 +7,12 @@
   "author": "Louis Reid",
   "repository": {
     "type": "git",
-    "url": "https://github.com/louisreid/mcp-doctor.git"
+    "url": "https://github.com/coefficient-ai/mcp-doctor.git"
   },
   "bugs": {
-    "url": "https://github.com/louisreid/mcp-doctor/issues"
+    "url": "https://github.com/coefficient-ai/mcp-doctor/issues"
   },
-  "homepage": "https://github.com/louisreid/mcp-doctor#readme",
+  "homepage": "https://github.com/coefficient-ai/mcp-doctor#readme",
   "keywords": [
     "mcp",
     "model-context-protocol",
