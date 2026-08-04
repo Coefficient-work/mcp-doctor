@@ -2,7 +2,7 @@
 
 **The easiest way to score MCP agent readiness.**
 
-Open-source CLI ó inspect, benchmark, and eval MCP servers before agents hit production.
+Open-source CLI ÔøΩ inspect, benchmark, and eval MCP servers before agents hit production.
 
 > *"We prove agents can actually use your MCP."*
 
@@ -46,7 +46,7 @@ npx github:coefficient-ai/mcp-doctor benchmark
 npx github:coefficient-ai/mcp-doctor list
 npx github:coefficient-ai/mcp-doctor inspect <name> -o report.md
 
-# Agent eval (BYOK ù Vercel AI Gateway free trial, local only)
+# Agent eval (BYOK ÔøΩ Vercel AI Gateway free trial, local only)
 export AI_GATEWAY_API_KEY=...
 npx github:coefficient-ai/mcp-doctor eval memory \
   --task "List all tools and describe them" \
@@ -59,7 +59,7 @@ npx github:coefficient-ai/mcp-doctor eval memory \
 vercel login
 cd mcp-doctor && vercel link
 vercel ai-gateway api-keys create --name mcp-doctor-local --budget 5 --refresh-period monthly
-# Key saved to .env.local (gitignored) ó CLI auto-loads it for eval
+# Key saved to .env.local (gitignored) ÔøΩ CLI auto-loads it for eval
 ```
 
 ## Pain Interview (before sending to friends)

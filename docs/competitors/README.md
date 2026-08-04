@@ -1,7 +1,7 @@
 # Competitor registry
 
 **Product:** [mcp-doctor](https://github.com/coefficient-ai/mcp-doctor)  
-**Positioning:** Agent-facing API QA — *"We prove agents can actually use your MCP."*  
+**Positioning:** Agent-facing API QA ï¿½ *"We prove agents can actually use your MCP."*  
 **Last updated:** 2026-07-10
 
 This registry tracks every competitor surfaced in the [ChatGPT Stripe/Stainless research thread](https://github.com/coefficient-ai/coefficient) plus Coefficient desk teardowns.
@@ -30,7 +30,7 @@ This registry tracks every competitor surfaced in the [ChatGPT Stripe/Stainless 
 
 | ID | Company | Threat | Overlap | Coefficient angle |
 |----|---------|--------|---------|-------------------|
-| stainless | Stainless | acquired | OpenAPI ? MCP | Partner — test output |
+| stainless | Stainless | acquired | OpenAPI ? MCP | Partner ï¿½ test output |
 | speakeasy | Speakeasy | **high** | MCP + Gateway + Gram | CI scorecard for generated MCPs |
 | gram | Gram (Speakeasy) | **high** | Tool curation | Validate curated sets |
 | fern | Fern | medium | Docs, Agent Score | MCP regression CI |
@@ -56,14 +56,14 @@ This registry tracks every competitor surfaced in the [ChatGPT Stripe/Stainless 
 | ID | Company | Threat | Overlap | Status | Deep dive |
 |----|---------|--------|---------|--------|-----------|
 | mcp-inspector | MCP Inspector | **high** | Debug + CLI | tracked | [inspector.md](./inspector.md) |
-| mcp-conformance | MCP Conformance | medium | Protocol only | tracked | — |
+| mcp-conformance | MCP Conformance | medium | Protocol only | tracked | ï¿½ |
 | mcp-eval | mcp-eval (Lastmile) | **high** | LLM task evals | tracked | [mcp-eval.md](./mcp-eval.md) |
 | mcpjam | MCPJam | **high** | Testing, OAuth, CI | tracked | [mcpjam.md](./mcpjam.md) |
-| mcp-lint | MCP Lint | medium | Static lint | tracked | — |
-| mcp-playground | MCP Playground | low | Schema linter | tracked | — |
-| spanly | Spanly | low | Observability | tracked | — |
-| iris | Iris | medium | MCP evals | tracked | — |
-| mcp-bench | MCP-Bench | low | Research bench | tracked | — |
+| mcp-lint | MCP Lint | medium | Static lint | tracked | ï¿½ |
+| mcp-playground | MCP Playground | low | Schema linter | tracked | ï¿½ |
+| spanly | Spanly | low | Observability | tracked | ï¿½ |
+| iris | Iris | medium | MCP evals | tracked | ï¿½ |
+| mcp-bench | MCP-Bench | low | Research bench | tracked | ï¿½ |
 | braintrust | Braintrust | medium | Generic evals | analyzed | [../research/competitive/braintrust.md](https://github.com/coefficient-ai/coefficient/blob/main/research/competitive/braintrust.md) |
 | langsmith | LangSmith | medium | Agent observability | analyzed | [../research/competitive/langsmith.md](https://github.com/coefficient-ai/coefficient/blob/main/research/competitive/langsmith.md) |
 
@@ -71,7 +71,7 @@ This registry tracks every competitor surfaced in the [ChatGPT Stripe/Stainless 
 
 | ID | Company | Threat | Notes |
 |----|---------|--------|-------|
-| arcade | Arcade | low | Agent auth — different layer |
+| arcade | Arcade | low | Agent auth ï¿½ different layer |
 | workos | WorkOS / Okta | low | Enterprise identity |
 | browserbase | Browserbase | low | Browser agents |
 | sentry-seer | Sentry Seer | low | Post-prod debugging |
