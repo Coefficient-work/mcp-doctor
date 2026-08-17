@@ -5,6 +5,7 @@ import { Command } from "commander";
 import { loadEnvLocal } from "./env.js";
 
 loadEnvLocal();
+import { NPX_INSTALL, NPM_PACKAGE } from "./brand.js";
 import { buildMcpBundle } from "./build.js";
 import {
   getServerEntry,
@@ -27,13 +28,26 @@ import { operationsFromDoc } from "./openapi.js";
 import { formatAnalyzeReport } from "./report.js";
 import { formatScorecardReport, runScorecard } from "./scorecard.js";
 import { runMcpServer } from "./serve.js";
+import {
+  formatTelemetryStatus,
+  maybeShowFirstRunNotice,
+  resolveTelemetryStatus,
+  setTelemetryPreference,
+} from "./telemetry.js";
 
 const program = new Command();
 
 program
   .name("mcp-doctor")
-  .description("Agent-facing API QA ? score, inspect, and optimize MCP readiness")
-  .version("0.4.0");
+  .description("Inspect MCP schemas, run task evals, and write a local readiness report")
+  .version("0.4.1")
+  .option("--no-telemetry", "Do not record anonymous usage for this invocation");
+
+program.hook("preAction", () => {
+  const opts = program.opts<{ telemetry?: boolean }>();
+  maybeShowFirstRunNotice();
+  resolveTelemetryStatus({ noTelemetry: opts.telemetry === false });
+});
 
 async function resolveSpec(spec: string): Promise<string> {
   if (spec === "--demo") {
@@ -72,7 +86,7 @@ program
     if (Object.keys(servers).length === 0) {
       console.log("  (no servers ? add one in Cursor Settings ? MCP)");
     } else {
-      console.log(`\nInspect: npx github:louisreid/mcp-doctor inspect <name>`);
+      console.log(`\nInspect: ${NPX_INSTALL} inspect <name>`);
     }
   });
 
@@ -369,11 +383,41 @@ program
       mcpServers: {
         "mcp-doctor-demo": {
           command: "npx",
-          args: ["-y", "github:louisreid/mcp-doctor", "serve", "--demo"],
+          args: ["-y", NPM_PACKAGE, "serve", "--demo"],
         },
       },
     };
     console.log(JSON.stringify(config, null, 2));
+  });
+
+const telemetry = program
+  .command("telemetry")
+  .description("Anonymous usage preference. Ingestion is off until the legal operator is verified.");
+
+telemetry
+  .command("status")
+  .description("Show whether telemetry would send (it will not, until ingestion is enabled)")
+  .action(() => {
+    const opts = program.opts<{ telemetry?: boolean }>();
+    console.log(formatTelemetryStatus(resolveTelemetryStatus({ noTelemetry: opts.telemetry === false })));
+  });
+
+telemetry
+  .command("enable")
+  .description("Store an enable preference. No events are sent while ingestion is gated off.")
+  .action(() => {
+    setTelemetryPreference("enabled");
+    console.log("Preference saved: enabled. Ingestion is still off.");
+    console.log(formatTelemetryStatus(resolveTelemetryStatus()));
+  });
+
+telemetry
+  .command("disable")
+  .description("Disable telemetry preference for this machine")
+  .action(() => {
+    setTelemetryPreference("disabled");
+    console.log("Preference saved: disabled.");
+    console.log(formatTelemetryStatus(resolveTelemetryStatus()));
   });
 
 program.parse();

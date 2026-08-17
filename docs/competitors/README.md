@@ -1,10 +1,10 @@
 # Competitor registry
 
-**Product:** [mcp-doctor](https://github.com/coefficient-ai/mcp-doctor)  
+**Product:** [mcp-doctor](https://github.com/coefficient-work/mcp-doctor)  
 **Positioning:** Agent-facing API QA � *"We prove agents can actually use your MCP."*  
 **Last updated:** 2026-07-10
 
-This registry tracks every competitor surfaced in the [ChatGPT Stripe/Stainless research thread](https://github.com/coefficient-ai/coefficient) plus Coefficient desk teardowns.
+This registry tracks every competitor surfaced in the [ChatGPT Stripe/Stainless research thread](https://github.com/coefficient-work/coefficient) plus Coefficient desk teardowns.
 
 ## Our lane
 
@@ -64,8 +64,8 @@ This registry tracks every competitor surfaced in the [ChatGPT Stripe/Stainless 
 | spanly | Spanly | low | Observability | tracked | � |
 | iris | Iris | medium | MCP evals | tracked | � |
 | mcp-bench | MCP-Bench | low | Research bench | tracked | � |
-| braintrust | Braintrust | medium | Generic evals | analyzed | [../research/competitive/braintrust.md](https://github.com/coefficient-ai/coefficient/blob/main/research/competitive/braintrust.md) |
-| langsmith | LangSmith | medium | Agent observability | analyzed | [../research/competitive/langsmith.md](https://github.com/coefficient-ai/coefficient/blob/main/research/competitive/langsmith.md) |
+| braintrust | Braintrust | medium | Generic evals | analyzed | [../research/competitive/braintrust.md](https://github.com/coefficient-work/coefficient/blob/main/research/competitive/braintrust.md) |
+| langsmith | LangSmith | medium | Agent observability | analyzed | [../research/competitive/langsmith.md](https://github.com/coefficient-work/coefficient/blob/main/research/competitive/langsmith.md) |
 
 ### Adjacent
 

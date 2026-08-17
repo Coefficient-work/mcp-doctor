@@ -1,3 +1,4 @@
+import { NPM_PACKAGE } from "./brand.js";
 import { toolToMcpPayload } from "./tokens.js";
 export function toMcpTools(tools) {
     return tools.map((tool) => {
@@ -14,7 +15,7 @@ export function cursorMcpConfig(serverName, specArg) {
         mcpServers: {
             [serverName]: {
                 command: "npx",
-                args: ["-y", "github:louisreid/mcp-doctor", "serve", specArg],
+                args: ["-y", NPM_PACKAGE, "serve", specArg],
             },
         },
     };
@@ -24,7 +25,7 @@ export function claudeDesktopConfig(serverName, specArg) {
         mcpServers: {
             [serverName]: {
                 command: "npx",
-                args: ["-y", "github:louisreid/mcp-doctor", "serve", specArg],
+                args: ["-y", NPM_PACKAGE, "serve", specArg],
             },
         },
     };

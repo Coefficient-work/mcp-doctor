@@ -19,6 +19,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install
+      - run: bash scripts/check-brand-leaks.sh
       - run: pnpm test
       - run: node dist/cli.js test --demo --json
       - run: node dist/cli.js list --config examples/vooma-mcp.example.json || true
