@@ -79,6 +79,6 @@ function formatDemoResponse(
     `Would call: ${tool.method} ${tool.path}`,
     `Args: ${JSON.stringify(args, null, 2)}`,
     "",
-    "Demo mode ù simulated response. Star github.com/louisreid/mcp-doctor for updates.",
+    "Demo mode ? simulated response. See https://github.com/coefficient-work/mcp-doctor",
   ].join("\n");
 }

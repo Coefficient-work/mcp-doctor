@@ -1,16 +1,22 @@
-# mcp-doctor ? Agent Readiness Platform (MCP wedge)
+# MCP Doctor by Coefficient
 
-**The easiest way to score MCP agent readiness.**
+**Know whether agents can use your MCP before you ship.**
 
-Open-source CLI � inspect, benchmark, and eval MCP servers before agents hit production.
-
-> *"We prove agents can actually use your MCP."*
+Open-source CLI that inspects schemas, runs task evals, and writes a local readiness report.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Site](https://img.shields.io/badge/site-coefficient.work-black)](https://coefficient.work)
 
+Public GitHub/npm identity is `coefficient-work`. That organization may not exist yet, so repository and package links can 404 until it is created. Do not install the unrelated unscoped `mcp-doctor` package.
+
+```bash
+npx @coefficient-work/mcp-doctor@latest inspect memory -o report.md
+```
+
+Telemetry ingestion is off. `mcp-doctor telemetry status|enable|disable` and `--no-telemetry` are implemented; no usage events are sent until the legal operator is verified.
+
 ## Real benchmark results
 
-**[State of MCP Quality 2026 (v0)](examples/reports/STATE-OF-MCP-2026.md)** ? 10 public servers scored live:
+**[State of MCP Quality 2026 (v0)](examples/reports/STATE-OF-MCP-2026.md)** — 10 public servers scored live on 2026-07-10, CLI v0.4.1:
 
 | Server | Grade | Tools | Tokens |
 |--------|-------|-------|--------|
@@ -23,74 +29,34 @@ Open-source CLI � inspect, benchmark, and eval MCP servers before agents hit p
 Per-server reports: [`examples/reports/`](examples/reports/)
 
 ```bash
-npx github:coefficient-ai/mcp-doctor benchmark -o ./reports
+npx @coefficient-work/mcp-doctor@latest benchmark -o ./reports
 ```
-
-## Three pillars
-
-| Pillar | Command | Status |
-|--------|---------|--------|
-| **Static scorecard** | `inspect`, `test` | v0.4 |
-| **Task success** | `eval` (BYOK) | v0.4 |
-| **Agent friction** | included in `eval` | v0.4 |
-
-Plus: **Recommended Improvements**, **Replay Timeline**, **Model Compatibility Matrix** (multi-model eval).
 
 ## Quick start
 
 ```bash
-# Benchmark public MCPs
-npx github:coefficient-ai/mcp-doctor benchmark
+npx @coefficient-work/mcp-doctor@latest list
+npx @coefficient-work/mcp-doctor@latest inspect <name> -o report.md
 
-# Inspect your Cursor MCP server
-npx github:coefficient-ai/mcp-doctor list
-npx github:coefficient-ai/mcp-doctor inspect <name> -o report.md
-
-# Agent eval (BYOK � Vercel AI Gateway free trial, local only)
+# Agent eval (BYOK — Vercel AI Gateway, local only)
 export AI_GATEWAY_API_KEY=...
-npx github:coefficient-ai/mcp-doctor eval memory \
+npx @coefficient-work/mcp-doctor@latest eval memory \
   --task "List all tools and describe them" \
   --models openai/gpt-4o-mini,openai/gpt-4o -o eval-report.md
 ```
-
-### AI Gateway setup (one-time)
-
-```bash
-vercel login
-cd mcp-doctor && vercel link
-vercel ai-gateway api-keys create --name mcp-doctor-local --budget 5 --refresh-period monthly
-# Key saved to .env.local (gitignored) � CLI auto-loads it for eval
-```
-
-## Pain Interview (before sending to friends)
-
-See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md) and Coefficient [`PAIN-INTERVIEW.md`](https://github.com/coefficient-ai/coefficient/blob/main/research/design-partners/PAIN-INTERVIEW.md).
-
-**Do not** ask friends to beta-test until you've run a 30-min workflow interview.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `benchmark` | State of MCP Quality ? score catalog servers |
+| `benchmark` | State of MCP Quality — score catalog servers |
 | `list` | MCP servers in `~/.cursor/mcp.json` |
 | `inspect <name>` | Live connect + scorecard + suggested fixes |
-| `eval <name> --task "..."` | BYOK agent eval + friction + replay (Vercel AI Gateway) |
+| `eval <name> --task "..."` | BYOK agent eval + friction + replay |
+| `telemetry status\|enable\|disable` | Local preference only; ingestion is off |
 | `test --demo` | Static scorecard on OpenAPI fixture |
-| `competitors` | 36-player market map |
-
-## Roadmap
-
-| Priority | Feature | Status |
-|----------|---------|--------|
-| 1 | Public benchmark reports | **v0.4** |
-| 2 | Pain Interview (Jonty / Anders) | In progress |
-| 3 | BYOK eval + friction | **v0.4** |
-| 4 | Suggested fixes | **v0.4** |
-| 5 | Model matrix | **v0.4** |
-| 6 | Scale to 50 MCPs + awards | Next |
-| 9 | OpenAPI drift | Deprioritized |
+| `competitors` | Market map |
 
 ## License
 
-MIT ? [Coefficient](https://github.com/coefficient-ai/coefficient) investigation
+MIT. MCP Doctor by Coefficient is an early-stage open-source project.

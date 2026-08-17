@@ -47,7 +47,7 @@ export function formatCompetitorReport(registry: CompetitorRegistry, categoryFil
     lines.push("");
   }
 
-  lines.push("Full analysis: https://github.com/louisreid/mcp-doctor/blob/main/docs/competitors/README.md");
+  lines.push("Full analysis: https://github.com/coefficient-work/mcp-doctor/blob/main/docs/competitors/README.md");
   return lines.join("\n");
 }
 
