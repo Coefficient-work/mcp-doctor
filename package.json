@@ -27,7 +27,7 @@
     "cli"
   ],
   "bin": {
-    "mcp-doctor": "./dist/cli.js"
+    "mcp-doctor": "dist/cli.js"
   },
   "files": [
     "dist",
