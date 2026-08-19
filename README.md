@@ -23,10 +23,10 @@ Open-source CLI — inspect, benchmark, and eval MCP servers before agents hit p
 Per-server reports: [`examples/reports/`](examples/reports/)
 
 ```bash
-npx github:coefficient-work/mcp-doctor benchmark -o ./reports
+npx @coefficient-work/mcp-doctor@latest benchmark -o ./reports
 ```
 
-The npm package `@coefficient-work/mcp-doctor` is not published yet. Use the GitHub installer above, not the unrelated unscoped `mcp-doctor` package.
+Public package: `@coefficient-work/mcp-doctor`. Do not install the unrelated unscoped `mcp-doctor` package.
 
 ## Three pillars
 
@@ -42,15 +42,15 @@ Plus: **Recommended Improvements**, **Replay Timeline**, **Model Compatibility M
 
 ```bash
 # Benchmark public MCPs
-npx github:coefficient-work/mcp-doctor benchmark
+npx @coefficient-work/mcp-doctor@latest benchmark
 
 # Inspect your Cursor MCP server
-npx github:coefficient-work/mcp-doctor list
-npx github:coefficient-work/mcp-doctor inspect <name> -o report.md
+npx @coefficient-work/mcp-doctor@latest list
+npx @coefficient-work/mcp-doctor@latest inspect <name> -o report.md
 
 # Agent eval (BYOK — Vercel AI Gateway free trial, local only)
 export AI_GATEWAY_API_KEY=...
-npx github:coefficient-work/mcp-doctor eval memory \
+npx @coefficient-work/mcp-doctor@latest eval memory \
   --task "List all tools and describe them" \
   --models openai/gpt-4o-mini,openai/gpt-4o -o eval-report.md
 ```

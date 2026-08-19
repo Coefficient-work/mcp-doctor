@@ -59,7 +59,7 @@ program
         console.log("  (no servers ? add one in Cursor Settings ? MCP)");
     }
     else {
-        console.log(`\nInspect: npx github:coefficient-work/mcp-doctor inspect <name>`);
+        console.log(`\nInspect: npx @coefficient-work/mcp-doctor@latest inspect <name>`);
     }
 });
 program
@@ -305,7 +305,7 @@ program
         mcpServers: {
             "mcp-doctor-demo": {
                 command: "npx",
-                args: ["-y", "github:coefficient-work/mcp-doctor", "serve", "--demo"],
+                args: ["-y", "@coefficient-work/mcp-doctor", "serve", "--demo"],
             },
         },
     };
