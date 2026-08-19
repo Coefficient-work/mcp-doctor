@@ -20,6 +20,7 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm test
+      - run: test "$(node dist/cli.js -V)" = "$(node -p "require('./package.json').version")"
       - run: node dist/cli.js test --demo --json
       - run: node dist/cli.js list --config examples/vooma-mcp.example.json || true
       - run: node dist/cli.js analyze --demo --json

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { loadEnvLocal } from "./env.js";
 loadEnvLocal();
@@ -17,11 +19,12 @@ import { operationsFromDoc } from "./openapi.js";
 import { formatAnalyzeReport } from "./report.js";
 import { formatScorecardReport, runScorecard } from "./scorecard.js";
 import { runMcpServer } from "./serve.js";
+const { version } = JSON.parse(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../package.json"), "utf8"));
 const program = new Command();
 program
     .name("mcp-doctor")
     .description("Inspect MCP servers and write a local readiness report")
-    .version("0.4.0");
+    .version(version);
 async function resolveSpec(spec) {
     if (spec === "--demo") {
         return demoFixturePath();
