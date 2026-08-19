@@ -1,10 +1,13 @@
 {
-  "name": "mcp-doctor",
+  "name": "@coefficient-work/mcp-doctor",
   "version": "0.4.1",
   "description": "Inspect MCP servers and write a local readiness report.",
   "type": "module",
   "license": "MIT",
   "author": "Roundtable Design Ltd",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/coefficient-work/mcp-doctor.git"

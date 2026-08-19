@@ -44,7 +44,7 @@ export async function buildMcpBundle(doc, outDir, options) {
         "## One-liner (demo server)",
         "",
         "```bash",
-        "npx github:coefficient-work/mcp-doctor serve --demo",
+        "npx @coefficient-work/mcp-doctor@latest serve --demo",
         "```",
         "",
         "**Demo mode** returns simulated responses � wire your API base URL in a future release.",

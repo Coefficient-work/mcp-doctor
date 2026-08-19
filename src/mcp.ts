@@ -23,7 +23,7 @@ export function cursorMcpConfig(serverName: string, specArg: string): Record<str
     mcpServers: {
       [serverName]: {
         command: "npx",
-        args: ["-y", "github:coefficient-work/mcp-doctor", "serve", specArg],
+        args: ["-y", "@coefficient-work/mcp-doctor", "serve", specArg],
       },
     },
   };
@@ -34,7 +34,7 @@ export function claudeDesktopConfig(serverName: string, specArg: string): Record
     mcpServers: {
       [serverName]: {
         command: "npx",
-        args: ["-y", "github:coefficient-work/mcp-doctor", "serve", specArg],
+        args: ["-y", "@coefficient-work/mcp-doctor", "serve", specArg],
       },
     },
   };
