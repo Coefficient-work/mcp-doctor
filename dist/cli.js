@@ -20,7 +20,7 @@ import { runMcpServer } from "./serve.js";
 const program = new Command();
 program
     .name("mcp-doctor")
-    .description("Agent-facing API QA ? score, inspect, and optimize MCP readiness")
+    .description("Inspect MCP servers and write a local readiness report")
     .version("0.4.0");
 async function resolveSpec(spec) {
     if (spec === "--demo") {
@@ -59,7 +59,7 @@ program
         console.log("  (no servers ? add one in Cursor Settings ? MCP)");
     }
     else {
-        console.log(`\nInspect: npx github:louisreid/mcp-doctor inspect <name>`);
+        console.log(`\nInspect: npx github:coefficient-work/mcp-doctor inspect <name>`);
     }
 });
 program
@@ -305,7 +305,7 @@ program
         mcpServers: {
             "mcp-doctor-demo": {
                 command: "npx",
-                args: ["-y", "github:louisreid/mcp-doctor", "serve", "--demo"],
+                args: ["-y", "github:coefficient-work/mcp-doctor", "serve", "--demo"],
             },
         },
     };
