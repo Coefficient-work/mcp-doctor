@@ -1,6 +1,6 @@
 # Competitor registry
 
-**Product:** [mcp-doctor](https://github.com/coefficient-ai/mcp-doctor)  
+**Product:** [mcp-doctor](https://github.com/coefficient-work/mcp-doctor)  
 **Positioning:** Agent-facing API QA � *"We prove agents can actually use your MCP."*  
 **Last updated:** 2026-07-10
 

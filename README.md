@@ -1,8 +1,8 @@
-# mcp-doctor ? Agent Readiness Platform (MCP wedge)
+# MCP Doctor
 
 **The easiest way to score MCP agent readiness.**
 
-Open-source CLI � inspect, benchmark, and eval MCP servers before agents hit production.
+Open-source CLI — inspect, benchmark, and eval MCP servers before agents hit production.
 
 > *"We prove agents can actually use your MCP."*
 
@@ -10,7 +10,7 @@ Open-source CLI � inspect, benchmark, and eval MCP servers before agents hit p
 
 ## Real benchmark results
 
-**[State of MCP Quality 2026 (v0)](examples/reports/STATE-OF-MCP-2026.md)** ? 10 public servers scored live:
+**[State of MCP Quality 2026 (v0)](examples/reports/STATE-OF-MCP-2026.md)** — 10 public servers scored live:
 
 | Server | Grade | Tools | Tokens |
 |--------|-------|-------|--------|
@@ -23,8 +23,10 @@ Open-source CLI � inspect, benchmark, and eval MCP servers before agents hit p
 Per-server reports: [`examples/reports/`](examples/reports/)
 
 ```bash
-npx github:coefficient-ai/mcp-doctor benchmark -o ./reports
+npx github:coefficient-work/mcp-doctor benchmark -o ./reports
 ```
+
+The npm package `@coefficient-work/mcp-doctor` is not published yet. Use the GitHub installer above, not the unrelated unscoped `mcp-doctor` package.
 
 ## Three pillars
 
@@ -40,15 +42,15 @@ Plus: **Recommended Improvements**, **Replay Timeline**, **Model Compatibility M
 
 ```bash
 # Benchmark public MCPs
-npx github:coefficient-ai/mcp-doctor benchmark
+npx github:coefficient-work/mcp-doctor benchmark
 
 # Inspect your Cursor MCP server
-npx github:coefficient-ai/mcp-doctor list
-npx github:coefficient-ai/mcp-doctor inspect <name> -o report.md
+npx github:coefficient-work/mcp-doctor list
+npx github:coefficient-work/mcp-doctor inspect <name> -o report.md
 
-# Agent eval (BYOK � Vercel AI Gateway free trial, local only)
+# Agent eval (BYOK — Vercel AI Gateway free trial, local only)
 export AI_GATEWAY_API_KEY=...
-npx github:coefficient-ai/mcp-doctor eval memory \
+npx github:coefficient-work/mcp-doctor eval memory \
   --task "List all tools and describe them" \
   --models openai/gpt-4o-mini,openai/gpt-4o -o eval-report.md
 ```
@@ -59,12 +61,12 @@ npx github:coefficient-ai/mcp-doctor eval memory \
 vercel login
 cd mcp-doctor && vercel link
 vercel ai-gateway api-keys create --name mcp-doctor-local --budget 5 --refresh-period monthly
-# Key saved to .env.local (gitignored) � CLI auto-loads it for eval
+# Key saved to .env.local (gitignored) — CLI auto-loads it for eval
 ```
 
 ## Pain Interview (before sending to friends)
 
-See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md) and Coefficient [`PAIN-INTERVIEW.md`](https://github.com/coefficient-ai/coefficient/blob/main/research/design-partners/PAIN-INTERVIEW.md).
+See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md).
 
 **Do not** ask friends to beta-test until you've run a 30-min workflow interview.
 
@@ -72,7 +74,7 @@ See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md) and Coefficient [`PAIN-INTERV
 
 | Command | Description |
 |---------|-------------|
-| `benchmark` | State of MCP Quality ? score catalog servers |
+| `benchmark` | State of MCP Quality — score catalog servers |
 | `list` | MCP servers in `~/.cursor/mcp.json` |
 | `inspect <name>` | Live connect + scorecard + suggested fixes |
 | `eval <name> --task "..."` | BYOK agent eval + friction + replay (Vercel AI Gateway) |
@@ -93,4 +95,4 @@ See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md) and Coefficient [`PAIN-INTERV
 
 ## License
 
-MIT ? [Coefficient](https://github.com/coefficient-ai/coefficient) investigation
+MIT

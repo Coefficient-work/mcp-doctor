@@ -1,18 +1,18 @@
 {
   "name": "mcp-doctor",
   "version": "0.4.1",
-  "description": "Agent-facing API QA — score MCP readiness, analyze tokens, and catch regressions before agents fail.",
+  "description": "Inspect MCP servers and write a local readiness report.",
   "type": "module",
   "license": "MIT",
-  "author": "Louis Reid",
+  "author": "Roundtable Design Ltd",
   "repository": {
     "type": "git",
-    "url": "https://github.com/coefficient-ai/mcp-doctor.git"
+    "url": "https://github.com/coefficient-work/mcp-doctor.git"
   },
   "bugs": {
-    "url": "https://github.com/coefficient-ai/mcp-doctor/issues"
+    "url": "https://github.com/coefficient-work/mcp-doctor/issues"
   },
-  "homepage": "https://github.com/coefficient-ai/mcp-doctor#readme",
+  "homepage": "https://coefficient.work",
   "keywords": [
     "mcp",
     "model-context-protocol",

@@ -14,7 +14,7 @@ export function cursorMcpConfig(serverName, specArg) {
         mcpServers: {
             [serverName]: {
                 command: "npx",
-                args: ["-y", "github:louisreid/mcp-doctor", "serve", specArg],
+                args: ["-y", "github:coefficient-work/mcp-doctor", "serve", specArg],
             },
         },
     };
@@ -24,7 +24,7 @@ export function claudeDesktopConfig(serverName, specArg) {
         mcpServers: {
             [serverName]: {
                 command: "npx",
-                args: ["-y", "github:louisreid/mcp-doctor", "serve", specArg],
+                args: ["-y", "github:coefficient-work/mcp-doctor", "serve", specArg],
             },
         },
     };
