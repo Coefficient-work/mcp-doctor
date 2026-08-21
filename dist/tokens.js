@@ -1,4 +1,4 @@
-/** Rough token estimate (chars / 4) � good enough for RAT benchmarks. */
+/** Rough token estimate (chars / 4) - good enough for RAT benchmarks. */
 export function estimateTokens(text) {
     return Math.ceil(text.length / 4);
 }

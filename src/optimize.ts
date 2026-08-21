@@ -76,7 +76,7 @@ function trimDescriptions(tools: ApiTool[], maxChars: number): ApiTool[] {
     ...tool,
     description:
       tool.description.length > maxChars
-        ? `${tool.description.slice(0, maxChars - 1)}ù`
+        ? `${tool.description.slice(0, maxChars - 1)}-`
         : tool.description,
   }));
 }
@@ -134,7 +134,7 @@ function stripSchemaNoise(schema: Record<string, unknown>): Record<string, unkno
         delete v.example;
         delete v.examples;
         if (typeof v.description === "string" && v.description.length > 60) {
-          v.description = `${v.description.slice(0, 59)}ù`;
+          v.description = `${v.description.slice(0, 59)}-`;
         }
         props[key] = v;
       } else {

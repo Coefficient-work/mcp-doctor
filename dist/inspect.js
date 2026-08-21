@@ -3,6 +3,7 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 export function mcpToolToApiTool(tool) {
+    const extra = tool;
     return {
         name: tool.name,
         description: tool.description ?? "",
@@ -10,6 +11,7 @@ export function mcpToolToApiTool(tool) {
         method: "TOOL",
         path: `/${tool.name}`,
         inputSchema: tool.inputSchema ?? { type: "object", properties: {} },
+        outputSchema: extra.outputSchema,
     };
 }
 export async function inspectLiveMcp(entry, serverName, options) {
@@ -128,7 +130,7 @@ function formatErr(e) {
 }
 export function formatInspectReport(live, scorecardMd) {
     const lines = [
-        `# MCP Doctor � live inspection: ${live.serverName}`,
+        `# MCP Doctor - live inspection: ${live.serverName}`,
         "",
         `| Metric | Value |`,
         `|--------|-------|`,
@@ -148,14 +150,14 @@ export function formatInspectReport(live, scorecardMd) {
     if (live.tools.length > 0) {
         lines.push("", "## Tools discovered", "");
         for (const t of live.tools.slice(0, 40)) {
-            lines.push(`- \`${t.name}\` � ${(t.description ?? "").slice(0, 100)}`);
+            lines.push(`- \`${t.name}\` - ${(t.description ?? "").slice(0, 100)}`);
         }
         if (live.tools.length > 40) {
-            lines.push(`- _�and ${live.tools.length - 40} more_`);
+            lines.push(`- _-and ${live.tools.length - 40} more_`);
         }
     }
     else {
-        lines.push("", "_No tools listed � server may require auth or use a non-standard transport._");
+        lines.push("", "_No tools listed - server may require auth or use a non-standard transport._");
     }
     lines.push("", "---", "", scorecardMd);
     lines.push("", "---", "", "## Feedback (copy to Louis)", "", "```text", `Server: ${live.serverName}`, "Grade: (see scorecard above)", "Would I ship this MCP to customers? yes / no / maybe", "Biggest issue:", "Best surprise:", "Would I pay for CI monitoring on this? yes / no", "```");

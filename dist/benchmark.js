@@ -21,7 +21,7 @@ export async function runBenchmark(entries, options) {
             const session = await connectMcpSession(item.entry, item.id, options?.timeoutMs ?? 60_000);
             const apiTools = session.tools.map(mcpToolToApiTool);
             const title = session.serverInfo?.name ?? item.name;
-            const scorecard = runScorecard({ info: { title } }, apiTools);
+            const scorecard = runScorecard({ info: { title } }, apiTools, { mode: "live" });
             const fixes = suggestedFixesFromChecks(scorecard.checks, apiTools);
             const connectMs = Date.now() - t0;
             const topWarn = scorecard.checks.find((c) => c.severity === "fail" || c.severity === "warn");
@@ -95,7 +95,7 @@ export function formatStateOfMcpReport(rows, date = "2026-07-10") {
         const mostTools = [...ok].sort((a, b) => b.toolCount - a.toolCount)[0];
         const lowestTokens = [...ok].sort((a, b) => a.tokens - b.tokens)[0];
         const worstBloat = [...ok].sort((a, b) => b.tokens - a.tokens)[0];
-        lines.push("", "## Awards (v0 � static scorecard)", "", `- **Best overall:** ${bestDocs?.name} (Grade ${bestDocs?.grade})`, `- **Lowest token cost:** ${lowestTokens?.name} (${lowestTokens?.tokens} tokens)`, `- **Most tools (bloat risk):** ${mostTools?.name} (${mostTools?.toolCount} tools)`, `- **Worst tool bloat:** ${worstBloat?.name} (${worstBloat?.tokens} tokens)`);
+        lines.push("", "## Awards (v0 - static scorecard)", "", `- **Best overall:** ${bestDocs?.name} (Grade ${bestDocs?.grade})`, `- **Lowest token cost:** ${lowestTokens?.name} (${lowestTokens?.tokens} tokens)`, `- **Most tools (bloat risk):** ${mostTools?.name} (${mostTools?.toolCount} tools)`, `- **Worst tool bloat:** ${worstBloat?.name} (${worstBloat?.tokens} tokens)`);
     }
     const failed = rows.filter((r) => r.error);
     if (failed.length > 0) {

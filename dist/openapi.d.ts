@@ -27,6 +27,7 @@ export type ApiTool = {
     method: string;
     path: string;
     inputSchema: Record<string, unknown>;
+    outputSchema?: Record<string, unknown>;
     /** Original operations when using group-by-tag discovery. */
     children?: ApiTool[];
 };

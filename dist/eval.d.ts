@@ -1,6 +1,6 @@
 import type { McpServerEntry } from "./config.js";
 import { computeFriction, type ReplayEvent } from "./friction.js";
-export type ModelProvider = "openai" | "anthropic" | "gateway";
+export type ModelProvider = "openai" | "anthropic" | "gateway" | "ollama";
 export type EvalOptions = {
     task: string;
     models?: string[];
@@ -27,5 +27,6 @@ export type EvalResult = {
     models: ModelEvalResult[];
 };
 export declare function runEval(entry: McpServerEntry, serverName: string, options: EvalOptions): Promise<EvalResult>;
+export declare function assertEvalAuth(): void;
 export declare function formatModelMatrix(results: ModelEvalResult[]): string;
 export declare function formatEvalReport(result: EvalResult): string;

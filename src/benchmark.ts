@@ -56,7 +56,7 @@ export async function runBenchmark(
       const session = await connectMcpSession(item.entry, item.id, options?.timeoutMs ?? 60_000);
       const apiTools = session.tools.map(mcpToolToApiTool);
       const title = session.serverInfo?.name ?? item.name;
-      const scorecard = runScorecard({ info: { title } }, apiTools);
+      const scorecard = runScorecard({ info: { title } }, apiTools, { mode: "live" });
       const fixes = suggestedFixesFromChecks(scorecard.checks, apiTools);
       const connectMs = Date.now() - t0;
 
@@ -141,7 +141,7 @@ export function formatStateOfMcpReport(rows: BenchmarkRow[], date = "2026-07-10"
 
     lines.push(
       "",
-      "## Awards (v0 — static scorecard)",
+      "## Awards (v0 - static scorecard)",
       "",
       `- **Best overall:** ${bestDocs?.name} (Grade ${bestDocs?.grade})`,
       `- **Lowest token cost:** ${lowestTokens?.name} (${lowestTokens?.tokens} tokens)`,

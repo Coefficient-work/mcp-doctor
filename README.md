@@ -44,15 +44,15 @@ Plus: **Recommended Improvements**, **Replay Timeline**, **Model Compatibility M
 # Benchmark public MCPs
 npx @coefficient-work/mcp-doctor@latest benchmark
 
-# Inspect your Cursor MCP server
+# Inspect your Cursor MCP server (also reads ./mcp.json)
 npx @coefficient-work/mcp-doctor@latest list
 npx @coefficient-work/mcp-doctor@latest inspect <name> -o report.md
 
-# Agent eval (BYOK — Vercel AI Gateway free trial, local only)
-export AI_GATEWAY_API_KEY=...
+# Agent eval (BYOK — keys stay local)
+export OPENAI_API_KEY=...   # or ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY, OLLAMA_HOST
 npx @coefficient-work/mcp-doctor@latest eval memory \
   --task "List all tools and describe them" \
-  --models openai/gpt-4o-mini,openai/gpt-4o -o eval-report.md
+  --models openai/gpt-4o-mini -o eval-report.md
 ```
 
 ### AI Gateway setup (one-time)
@@ -74,12 +74,12 @@ See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md).
 
 | Command | Description |
 |---------|-------------|
-| `benchmark` | State of MCP Quality — score catalog servers |
-| `list` | MCP servers in `~/.cursor/mcp.json` |
+| `benchmark` | State of MCP Quality — score catalog servers (writes files only with `--out`) |
+| `list` | MCP servers in `./mcp.json` or `~/.cursor/mcp.json` |
 | `inspect <name>` | Live connect + scorecard + suggested fixes |
-| `eval <name> --task "..."` | BYOK agent eval + friction + replay (Vercel AI Gateway) |
+| `eval <name> --task "..."` | BYOK agent eval + friction + replay (OpenAI, Anthropic, Gateway, or Ollama) |
 | `test --demo` | Static scorecard on OpenAPI fixture |
-| `competitors` | 36-player market map |
+| `competitors` | Adjacent MCP tooling map |
 
 ## Roadmap
 

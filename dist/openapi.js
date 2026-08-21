@@ -15,8 +15,8 @@ export function operationsFromDoc(doc) {
             const op = operation;
             const tag = op.tags?.[0] ?? "default";
             const name = sanitizeToolName(op.operationId ?? `${method}_${path}`);
-            const description = [op.summary, op.description].filter(Boolean).join(" � ") ||
-                `${method.toUpperCase()} ${path}`;
+            const parts = [op.summary, op.description].filter(Boolean);
+            const description = parts.join(" -- ") || `${method.toUpperCase()} ${path}`;
             tools.push({
                 name,
                 description,
@@ -24,6 +24,7 @@ export function operationsFromDoc(doc) {
                 method: method.toUpperCase(),
                 path,
                 inputSchema: buildInputSchema(op),
+                outputSchema: responseSchemaFromOperation(op),
             });
         }
     }
@@ -62,4 +63,16 @@ function buildInputSchema(operation) {
         properties,
         ...(required.length ? { required } : {}),
     };
+}
+function responseSchemaFromOperation(operation) {
+    const responses = operation.responses ?? {};
+    for (const code of ["200", "201", "default"]) {
+        const response = responses[code];
+        const json = response?.content?.["application/json"]?.schema;
+        if (json)
+            return json;
+        if (response?.schema)
+            return response.schema;
+    }
+    return undefined;
 }
