@@ -19,7 +19,7 @@ export async function runBenchmark(entries, options) {
         const t0 = Date.now();
         try {
             const session = await connectMcpSession(item.entry, item.id, options?.timeoutMs ?? 60_000);
-            const apiTools = session.tools.map(mcpToolToApiTool);
+            const apiTools = session.tools.map((tool) => mcpToolToApiTool(tool));
             const title = session.serverInfo?.name ?? item.name;
             const scorecard = runScorecard({ info: { title } }, apiTools, { mode: "live" });
             const fixes = suggestedFixesFromChecks(scorecard.checks, apiTools);
@@ -72,7 +72,7 @@ export async function runBenchmark(entries, options) {
     }
     return { rows, reports };
 }
-export function formatStateOfMcpReport(rows, date = "2026-07-10") {
+export function formatStateOfMcpReport(rows, date = new Date().toISOString().slice(0, 10)) {
     const ok = rows.filter((r) => !r.error);
     const sorted = [...ok].sort((a, b) => b.score - a.score);
     const lines = [

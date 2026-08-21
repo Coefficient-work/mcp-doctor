@@ -127,14 +127,19 @@ program
 
       console.error(`Connecting to ${serverName}...`);
       const live = await inspectLiveMcp(entry, serverName, { timeoutMs: opts.timeout });
-      const apiTools = live.tools.map(mcpToolToApiTool);
+      const malformedIndexes = new Set((live.malformedTools ?? []).map((m) => m.index));
+      const malformedNames = new Set((live.malformedTools ?? []).map((m) => m.name));
+      const apiTools = live.tools.map((tool, i) =>
+        mcpToolToApiTool(tool, {
+          missingInputSchema: malformedIndexes.has(i) || malformedNames.has(tool.name),
+        }),
+      );
       const title = live.serverInfo?.name ?? serverName;
-      const listToolsError = live.errors.find((e) => e.startsWith("listTools:"));
-      const discoveryFailed = Boolean(listToolsError) || (live.toolCount === 0 && live.errors.length > 0);
+      const discoveryFailed = live.toolCount === 0 && live.errors.length > 0;
       const scorecard = runScorecard({ info: { title } }, apiTools, {
         mode: "live",
         discoveryFailed,
-        discoveryError: listToolsError ?? live.errors[0],
+        discoveryError: live.errors[0],
       });
       const fixes = suggestedFixesFromChecks(scorecard.checks, apiTools);
       const report = [
@@ -156,7 +161,7 @@ program
         console.error(`\nWrote ${opts.out}`);
       }
 
-      if (live.toolCount === 0 && live.errors.length > 0) {
+      if (discoveryFailed) {
         process.exit(2);
       }
     },

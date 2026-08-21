@@ -18,13 +18,17 @@ function liveTool(partial: {
   description: string;
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
+  missingInputSchema?: boolean;
 }): ApiTool {
-  return mcpToolToApiTool({
-    name: partial.name,
-    description: partial.description,
-    inputSchema: (partial.inputSchema ?? { type: "object", properties: {} }) as Tool["inputSchema"],
-    ...(partial.outputSchema ? { outputSchema: partial.outputSchema } : {}),
-  } as Tool);
+  return mcpToolToApiTool(
+    {
+      name: partial.name,
+      description: partial.description,
+      inputSchema: (partial.inputSchema ?? { type: "object", properties: {} }) as Tool["inputSchema"],
+      ...(partial.outputSchema ? { outputSchema: partial.outputSchema } : {}),
+    } as Tool,
+    { missingInputSchema: partial.missingInputSchema },
+  );
 }
 
 describe("runScorecard", () => {
@@ -234,6 +238,8 @@ describe("CloudShelf 0.4.3 scorecard", () => {
     const discovery = result.checks.find((c) => c.id === "discovery");
     assert.equal(discovery?.severity, "fail");
     assert.match(discovery?.detail ?? "", /inputSchema/);
+    assert.match(discovery?.detail ?? "", /Tool #6/);
+    assert.equal(/Invalid input: expected object/.test(discovery?.detail ?? ""), false);
     assert.equal(result.checks.some((c) => c.severity === "pass"), false);
   });
 
@@ -331,5 +337,155 @@ describe("CloudShelf 0.4.3 scorecard", () => {
     const result = runScorecard({ info: { title: "cloudshelf" } }, tools, { mode: "live" });
     const check = result.checks.find((c) => c.id === "output-schema");
     assert.match(check?.detail ?? "", /\(\+2 more\)/);
+  });
+});
+
+describe("BeaconHub 0.4.4 scorecard", () => {
+  it("treats required: [] on a list tool as missing-required pass", () => {
+    const result = runScorecard(
+      { info: { title: "beaconhub" } },
+      [
+        liveTool({
+          name: "list_deployments",
+          description: "List deployments with optional environment and status filters for operators.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              environment: { type: "string", description: "Environment name", enum: ["prod", "stage"] },
+              status: { type: "string", description: "Rollout status", enum: ["live", "failed"] },
+            },
+            required: [],
+          },
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "missing-required");
+    assert.equal(check?.severity, "pass");
+  });
+
+  it("warns when required is missing entirely on a tool with properties", () => {
+    const result = runScorecard(
+      { info: { title: "beaconhub" } },
+      [
+        liveTool({
+          name: "list_deployments",
+          description: "List deployments with optional environment and status filters for operators.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              environment: { type: "string", description: "Environment name", enum: ["prod", "stage"] },
+            },
+          },
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "missing-required");
+    assert.equal(check?.severity, "warn");
+    assert.match(check?.detail ?? "", /list_deployments/);
+  });
+
+  it("fails secret_api_key but not vault_pointer or credential_secret_ref", () => {
+    const result = runScorecard(
+      { info: { title: "beaconhub" } },
+      [
+        liveTool({
+          name: "rotate_signing_material",
+          description: "Rotate signing material for a deployment using vault references, not raw secrets.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              secret_api_key: { type: "string", description: "The API key itself" },
+              vault_pointer: { type: "string", description: "Path to the secret in vault" },
+              credential_secret_ref: { type: "string", description: "Env var name holding the credential" },
+            },
+            required: ["secret_api_key"],
+          },
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "credential-in-args");
+    assert.equal(check?.severity, "fail");
+    assert.match(check?.detail ?? "", /secret_api_key/);
+    assert.equal((check?.detail ?? "").includes("vault_pointer"), false);
+    assert.equal((check?.detail ?? "").includes("credential_secret_ref"), false);
+  });
+
+  it("flags a secret reference when the description says it is a bearer token", () => {
+    const result = runScorecard(
+      { info: { title: "beaconhub" } },
+      [
+        liveTool({
+          name: "call_upstream",
+          description: "Call an upstream API using a referenced credential for authentication.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              vault_pointer: { type: "string", description: "Bearer token for the upstream API" },
+            },
+            required: ["vault_pointer"],
+          },
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "credential-in-args");
+    assert.equal(check?.severity, "fail");
+    assert.match(check?.detail ?? "", /vault_pointer/);
+  });
+
+  it("does not flag update_routing_policy just because the description says remove", () => {
+    const result = runScorecard(
+      { info: { title: "beaconhub" } },
+      [
+        liveTool({
+          name: "update_routing_policy",
+          description:
+            "Update traffic routing policy for a service, including weights used to remove failed backends from rotation.",
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "destructive-warnings");
+    assert.notEqual(check?.severity, "warn");
+  });
+
+  it("flags prune_stale_caches purging/zeroing until a CAUTION prefix", () => {
+    const unmarked = liveTool({
+      name: "prune_stale_caches",
+      description: "Purging and zeroing stale edge caches for the selected service immediately.",
+    });
+    const unmarkedResult = runScorecard({ info: { title: "beaconhub" } }, [unmarked], { mode: "live" });
+    const unmarkedCheck = unmarkedResult.checks.find((c) => c.id === "destructive-warnings");
+    assert.equal(unmarkedCheck?.severity, "warn");
+    assert.match(unmarkedCheck?.detail ?? "", /prune_stale_caches/);
+
+    const marked = liveTool({
+      name: "prune_stale_caches",
+      description:
+        "CAUTION / DESTRUCTIVE: Purging and zeroing stale edge caches for the selected service immediately.",
+    });
+    const markedResult = runScorecard({ info: { title: "beaconhub" } }, [marked], { mode: "live" });
+    const markedCheck = markedResult.checks.find((c) => c.id === "destructive-warnings");
+    assert.equal(markedCheck?.severity, "pass");
+  });
+
+  it("fails a recovered tool that omitted inputSchema", () => {
+    const result = runScorecard(
+      { info: { title: "beaconhub" } },
+      [
+        liveTool({
+          name: "reboot_canary",
+          description: "Reboots the canary instance after a failed health check window.",
+          missingInputSchema: true,
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "missing-input-schema");
+    assert.equal(check?.severity, "fail");
+    assert.match(check?.detail ?? "", /reboot_canary/);
   });
 });

@@ -35,11 +35,18 @@ export function suggestedFixesFromChecks(checks, tools) {
                 suggested: "Declare inputSchema.required for properties the tool cannot run without.",
             });
         }
+        if (check.id === "discovery" || check.id === "missing-input-schema") {
+            fixes.push({
+                checkId: check.id,
+                problem: check.detail ?? check.message,
+                suggested: 'Add inputSchema: { type: "object", properties: {} } on the malformed tool (empty object is valid when it takes no arguments).',
+            });
+        }
         if (check.id === "output-schema") {
             fixes.push({
                 checkId: check.id,
                 problem: check.detail ?? check.message,
-                suggested: "Declare outputSchema (or OpenAPI response schema) so agents know the return shape.",
+                suggested: 'Declare outputSchema so agents know the return shape, for example:\n{\n  "type": "object",\n  "properties": { "ok": { "type": "boolean" } },\n  "required": ["ok"]\n}',
             });
         }
         if (check.id === "destructive-warnings") {
@@ -91,11 +98,12 @@ export function suggestedFixesFromChecks(checks, tools) {
     return fixes.slice(0, 12);
 }
 function expandDescription(tool) {
-    const verb = tool.name.replace(/_/g, " ");
-    return `${capitalize(verb)}. Use when the agent needs to perform this operation. Required params are in inputSchema.`;
-}
-function capitalize(s) {
-    return s.charAt(0).toUpperCase() + s.slice(1);
+    const current = tool.description.trim();
+    if (!current) {
+        return `Write a one-sentence purpose for ${tool.name}: what it returns and which required params the agent must pass.`;
+    }
+    const sentence = /[.!?]$/.test(current) ? current : `${current}.`;
+    return `${sentence} Say when to choose this tool versus siblings, not just that it performs this operation.`;
 }
 export function formatSuggestedFixes(fixes) {
     if (fixes.length === 0) {

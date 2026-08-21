@@ -1,5 +1,6 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -35,4 +36,29 @@ async function readSpecRaw(spec) {
 /** Bundled demo fixture shipped with the package. */
 export function demoFixturePath() {
     return join(__dirname, "..", "fixtures", "bloated-platform-api.json");
+}
+export function looksLikeMcpServerName(spec) {
+    if (spec.startsWith("http://") || spec.startsWith("https://"))
+        return false;
+    if (spec.includes("/") || spec.includes("\\"))
+        return false;
+    if (/\.(json|ya?ml)$/i.test(spec))
+        return false;
+    return true;
+}
+export async function requireOpenApiSpec(spec, demo, command) {
+    if (demo)
+        return demoFixturePath();
+    if (!spec) {
+        throw new Error(`${command} needs an OpenAPI spec path/URL, or --demo. It does not take an MCP server name.`);
+    }
+    if (spec === "--demo")
+        return demoFixturePath();
+    if (spec.startsWith("http://") || spec.startsWith("https://"))
+        return spec;
+    const resolved = resolve(spec);
+    if (!existsSync(resolved) && looksLikeMcpServerName(spec)) {
+        throw new Error(`"${spec}" is not an OpenAPI file. For a live MCP server run: mcp-doctor inspect ${spec}`);
+    }
+    return resolved;
 }

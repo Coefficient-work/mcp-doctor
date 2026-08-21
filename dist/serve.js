@@ -2,10 +2,11 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, } from "@modelcontextprotocol/sdk/types.js";
 import { toMcpTools } from "./mcp.js";
+import { packageVersion } from "./pkg.js";
 export async function runMcpServer(tools, serverTitle) {
     const mcpTools = toMcpTools(tools);
     const toolMap = new Map(tools.map((t) => [t.name, t]));
-    const server = new Server({ name: "mcp-doctor", version: "0.2.0" }, { capabilities: { tools: {} } });
+    const server = new Server({ name: "mcp-doctor", version: packageVersion() }, { capabilities: { tools: {} } });
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
         tools: mcpTools,
     }));

@@ -20,8 +20,12 @@ export type ScorecardResult = {
 };
 export type ScorecardOptions = {
     mode?: ScorecardMode;
+    discoveryFailed?: boolean;
+    discoveryError?: string;
 };
+export declare function formatTruncatedList(items: string[], limit?: number): string;
 export declare function runScorecard(doc: OpenApiDocument, tools?: ApiTool[], options?: ScorecardOptions): ScorecardResult;
+export declare function argumentLooksLikeSecret(name: string, description?: string): boolean;
 export declare function formatScorecardReport(result: ScorecardResult): string;
 export declare function topTokenConsumers(tools: ApiTool[], limit?: number): Array<{
     name: string;

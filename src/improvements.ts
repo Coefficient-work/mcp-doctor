@@ -50,6 +50,15 @@ export function suggestedFixesFromChecks(checks: ScorecardCheck[], tools: ApiToo
       });
     }
 
+    if (check.id === "discovery" || check.id === "missing-input-schema") {
+      fixes.push({
+        checkId: check.id,
+        problem: check.detail ?? check.message,
+        suggested:
+          'Add inputSchema: { type: "object", properties: {} } on the malformed tool (empty object is valid when it takes no arguments).',
+      });
+    }
+
     if (check.id === "output-schema") {
       fixes.push({
         checkId: check.id,
@@ -121,7 +130,8 @@ function expandDescription(tool: ApiTool): string {
   if (!current) {
     return `Write a one-sentence purpose for ${tool.name}: what it returns and which required params the agent must pass.`;
   }
-  return `${current} Say when to choose this tool versus siblings, not just that it performs this operation.`;
+  const sentence = /[.!?]$/.test(current) ? current : `${current}.`;
+  return `${sentence} Say when to choose this tool versus siblings, not just that it performs this operation.`;
 }
 
 export function formatSuggestedFixes(fixes: SuggestedFix[]): string {

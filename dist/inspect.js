@@ -2,8 +2,13 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-export function mcpToolToApiTool(tool) {
-    const extra = tool;
+import { coerceListedTools, humanizeListToolsError, lenientListToolsResultSchema, } from "./inspect-errors.js";
+import { packageVersion } from "./pkg.js";
+export function mcpToolToApiTool(tool, extra) {
+    const payload = tool;
+    const schemaMissing = extra?.missingInputSchema === true ||
+        tool.inputSchema == null ||
+        typeof tool.inputSchema !== "object";
     return {
         name: tool.name,
         description: tool.description ?? "",
@@ -11,14 +16,15 @@ export function mcpToolToApiTool(tool) {
         method: "TOOL",
         path: `/${tool.name}`,
         inputSchema: tool.inputSchema ?? { type: "object", properties: {} },
-        outputSchema: extra.outputSchema,
+        outputSchema: payload.outputSchema,
+        ...(schemaMissing ? { missingInputSchema: true } : {}),
     };
 }
 export async function inspectLiveMcp(entry, serverName, options) {
     const timeoutMs = options?.timeoutMs ?? 45_000;
     const errors = [];
     const start = Date.now();
-    const client = new Client({ name: "mcp-doctor", version: "0.3.0" }, { capabilities: {} });
+    const client = new Client({ name: "mcp-doctor", version: packageVersion() }, { capabilities: {} });
     let transport = "stdio";
     if (entry.url) {
         const connected = await connectHttpWithFallback(client, entry.url, entry.headers ?? {}, timeoutMs);
@@ -40,6 +46,7 @@ export async function inspectLiveMcp(entry, serverName, options) {
         throw new Error("MCP config needs either `url` (remote) or `command` (stdio)");
     }
     let tools = [];
+    let malformedTools = [];
     let resourceCount = 0;
     let promptCount = 0;
     let serverInfo;
@@ -56,7 +63,24 @@ export async function inspectLiveMcp(entry, serverName, options) {
         tools = listed.tools ?? [];
     }
     catch (e) {
-        errors.push(`listTools: ${formatErr(e)}`);
+        const raw = formatErr(e);
+        try {
+            const listed = await withTimeout(client.request({ method: "tools/list" }, lenientListToolsResultSchema), timeoutMs, "listTools");
+            const coerced = coerceListedTools(listed.tools ?? []);
+            tools = coerced.tools;
+            malformedTools = coerced.malformed;
+            if (coerced.malformed.length > 0) {
+                for (const m of coerced.malformed) {
+                    errors.push(humanizeListToolsError(`expected object, received undefined at tools.${m.index}.inputSchema`, coerced.tools));
+                }
+            }
+            else {
+                errors.push(humanizeListToolsError(raw, coerced.tools));
+            }
+        }
+        catch {
+            errors.push(humanizeListToolsError(raw, tools));
+        }
     }
     try {
         const resources = await withTimeout(client.listResources(), timeoutMs, "listResources");
@@ -88,6 +112,7 @@ export async function inspectLiveMcp(entry, serverName, options) {
         promptCount,
         latencyMs: Date.now() - start,
         errors,
+        malformedTools,
     };
 }
 async function connectHttpWithFallback(client, url, headers, timeoutMs) {
@@ -126,7 +151,12 @@ async function withTimeout(promise, ms, label) {
     }
 }
 function formatErr(e) {
-    return e instanceof Error ? e.message : String(e);
+    if (e instanceof Error)
+        return e.message;
+    if (typeof e === "object" && e && "message" in e && typeof e.message === "string") {
+        return e.message;
+    }
+    return String(e);
 }
 export function formatInspectReport(live, scorecardMd) {
     const lines = [
@@ -150,11 +180,14 @@ export function formatInspectReport(live, scorecardMd) {
     if (live.tools.length > 0) {
         lines.push("", "## Tools discovered", "");
         for (const t of live.tools.slice(0, 40)) {
-            lines.push(`- \`${t.name}\` - ${(t.description ?? "").slice(0, 100)}`);
+            lines.push(`- \`${t.name}\` - ${truncateAtWord(t.description ?? "", 100)}`);
         }
         if (live.tools.length > 40) {
             lines.push(`- _-and ${live.tools.length - 40} more_`);
         }
+    }
+    else if (live.errors.some((err) => /inputSchema/i.test(err))) {
+        lines.push("", "_Tool discovery failed because at least one tool is missing inputSchema. Other tools were not listed._");
     }
     else {
         lines.push("", "_No tools listed - server may require auth or use a non-standard transport._");
@@ -162,4 +195,13 @@ export function formatInspectReport(live, scorecardMd) {
     lines.push("", "---", "", scorecardMd);
     lines.push("", "---", "", "## Feedback (copy to Louis)", "", "```text", `Server: ${live.serverName}`, "Grade: (see scorecard above)", "Would I ship this MCP to customers? yes / no / maybe", "Biggest issue:", "Best surprise:", "Would I pay for CI monitoring on this? yes / no", "```");
     return lines.join("\n");
+}
+export function truncateAtWord(text, max = 100) {
+    const t = text.replace(/\s+/g, " ").trim();
+    if (t.length <= max)
+        return t;
+    const sliced = t.slice(0, max);
+    const sp = sliced.lastIndexOf(" ");
+    const base = (sp > Math.floor(max * 0.4) ? sliced.slice(0, sp) : sliced).trimEnd();
+    return `${base}...`;
 }

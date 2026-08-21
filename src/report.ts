@@ -21,7 +21,7 @@ export function formatAnalyzeReport(
       `| Tools (optimized) | ${optimized.tools.length} |`,
       `| Tokens (optimized) | ${optimized.optimizedTokens.toLocaleString()} |`,
       `| Reduction | **${optimized.reductionPct}%** |`,
-      `| Strategies | ${optimized.strategiesApplied.join(" ? ")} |`,
+      `| Strategies | ${optimized.strategiesApplied.join(" -> ")} |`,
     );
   }
 
@@ -34,7 +34,9 @@ export function formatAnalyzeReport(
   if (optimized) {
     lines.push("", "## Optimized tool surface", "");
     for (const tool of optimized.tools) {
-      lines.push(`- \`${tool.name}\` (${tool.tag}) - ${tool.description.slice(0, 72)}-`);
+      const desc =
+        tool.description.length > 72 ? `${tool.description.slice(0, 69)}...` : tool.description;
+      lines.push(`- \`${tool.name}\` (${tool.tag}) - ${desc}`);
     }
   }
 

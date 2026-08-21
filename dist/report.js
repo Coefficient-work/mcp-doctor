@@ -9,7 +9,7 @@ export function formatAnalyzeReport(title, tools, optimized) {
         `| Tokens (baseline) | ${toolsTokenCount(tools).toLocaleString()} |`,
     ];
     if (optimized) {
-        lines.push(`| Tools (optimized) | ${optimized.tools.length} |`, `| Tokens (optimized) | ${optimized.optimizedTokens.toLocaleString()} |`, `| Reduction | **${optimized.reductionPct}%** |`, `| Strategies | ${optimized.strategiesApplied.join(" ? ")} |`);
+        lines.push(`| Tools (optimized) | ${optimized.tools.length} |`, `| Tokens (optimized) | ${optimized.optimizedTokens.toLocaleString()} |`, `| Reduction | **${optimized.reductionPct}%** |`, `| Strategies | ${optimized.strategiesApplied.join(" -> ")} |`);
     }
     lines.push("", "## Top token consumers (baseline)", "");
     const ranked = perToolTokens(tools).sort((a, b) => b.tokens - a.tokens).slice(0, 10);
@@ -19,7 +19,8 @@ export function formatAnalyzeReport(title, tools, optimized) {
     if (optimized) {
         lines.push("", "## Optimized tool surface", "");
         for (const tool of optimized.tools) {
-            lines.push(`- \`${tool.name}\` (${tool.tag}) - ${tool.description.slice(0, 72)}-`);
+            const desc = tool.description.length > 72 ? `${tool.description.slice(0, 69)}...` : tool.description;
+            lines.push(`- \`${tool.name}\` (${tool.tag}) - ${desc}`);
         }
     }
     lines.push("", "---", "_Token estimate: JSON-serialized MCP tool definitions - 4 (concierge benchmark)._");

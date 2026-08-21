@@ -54,7 +54,7 @@ export async function runBenchmark(
     const t0 = Date.now();
     try {
       const session = await connectMcpSession(item.entry, item.id, options?.timeoutMs ?? 60_000);
-      const apiTools = session.tools.map(mcpToolToApiTool);
+      const apiTools = session.tools.map((tool) => mcpToolToApiTool(tool));
       const title = session.serverInfo?.name ?? item.name;
       const scorecard = runScorecard({ info: { title } }, apiTools, { mode: "live" });
       const fixes = suggestedFixesFromChecks(scorecard.checks, apiTools);

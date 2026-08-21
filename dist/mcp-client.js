@@ -2,8 +2,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { packageVersion } from "./pkg.js";
 export async function connectMcpSession(entry, serverName, timeoutMs = 45_000) {
-    const client = new Client({ name: "mcp-doctor", version: "0.4.0" }, { capabilities: {} });
+    const client = new Client({ name: "mcp-doctor", version: packageVersion() }, { capabilities: {} });
     let transport = "stdio";
     if (entry.url) {
         const baseUrl = new URL(entry.url);
