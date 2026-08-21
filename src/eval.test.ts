@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { assertEvalAuth } from "./eval.js";
+import { assertEvalAuth, evalTaskSucceeded } from "./eval.js";
 
 describe("assertEvalAuth", () => {
   const keys = [
@@ -43,5 +43,50 @@ describe("assertEvalAuth", () => {
     } finally {
       restore(prev);
     }
+  });
+});
+
+describe("evalTaskSucceeded", () => {
+  it("succeeds on stop plus one non-error tool result without magic words", () => {
+    assert.equal(
+      evalTaskSucceeded({
+        finishReason: "stop",
+        events: [
+          { step: 1, type: "tool_call", summary: "Call list_shipments", toolName: "list_shipments" },
+          { step: 2, type: "tool_result", summary: "SHP-1001 in_transit at HUB-EAST", toolName: "list_shipments" },
+          { step: 3, type: "assistant", summary: "Shipment SHP-1001 is in transit at HUB-EAST." },
+        ],
+      }),
+      true,
+    );
+  });
+
+  it("fails when the model never calls a tool", () => {
+    assert.equal(
+      evalTaskSucceeded({
+        finishReason: "stop",
+        events: [{ step: 1, type: "assistant", summary: "I listed the tools." }],
+      }),
+      false,
+    );
+  });
+
+  it("fails when every tool result is an error", () => {
+    assert.equal(
+      evalTaskSucceeded({
+        finishReason: "stop",
+        events: [
+          { step: 1, type: "tool_call", summary: "Call list_shipments", toolName: "list_shipments" },
+          {
+            step: 2,
+            type: "tool_result",
+            summary: "unauthorized",
+            toolName: "list_shipments",
+            isError: true,
+          },
+        ],
+      }),
+      false,
+    );
   });
 });

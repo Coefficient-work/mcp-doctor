@@ -55,6 +55,7 @@ function tools() {
         type: "object",
         properties: {
           secret_api_key: { type: "string", description: "The API key itself" },
+          api_secret: { type: "string", description: "Shared API secret" },
           vault_pointer: { type: "string", description: "Path to the secret in vault" },
         },
         required: ["secret_api_key"],
@@ -63,6 +64,21 @@ function tools() {
     {
       name: "prune_stale_caches",
       description: "Purging and zeroing stale edge caches for the selected service immediately.",
+      inputSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "purge_stale_sessions",
+      description: "Purging operation: permanently removes stale operator sessions from the hot store.",
+      inputSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "zero_audit_trail",
+      description: "Zero inactive audit rows for the selected tenant immediately.",
+      inputSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "broadcast_status",
+      description: `${"Broadcast status to every on-call rotator and repeat the paging policy for HarborLine operators. ".repeat(12)}`,
       inputSchema: { type: "object", properties: {} },
     },
     {

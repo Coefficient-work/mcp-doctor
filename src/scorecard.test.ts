@@ -487,7 +487,156 @@ describe("BeaconHub 0.4.4 scorecard", () => {
     const check = result.checks.find((c) => c.id === "missing-input-schema");
     assert.equal(check?.severity, "fail");
     assert.match(check?.detail ?? "", /reboot_canary/);
-    assert.equal(result.score, 0);
     assert.equal(result.grade, "F");
+    assert.ok(result.score <= 39);
+  });
+});
+
+describe("RelayDesk 0.4.5 scorecard", () => {
+  it("flags api_secret as a credential value field", () => {
+    const result = runScorecard(
+      { info: { title: "relaydesk" } },
+      [
+        liveTool({
+          name: "store_credential",
+          description: "Store an operator credential for later dispatch alerts.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              api_secret: { type: "string", description: "Shared API secret" },
+            },
+            required: ["api_secret"],
+          },
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "credential-in-args");
+    assert.equal(check?.severity, "fail");
+    assert.match(check?.detail ?? "", /api_secret/);
+  });
+
+  it("flags a *_ref when the description still says it is an auth token to pass", () => {
+    const result = runScorecard(
+      { info: { title: "northwind" } },
+      [
+        liveTool({
+          name: "send_dispatch_alert",
+          description: "Send a dispatch SMS via Twilio.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              twilio_token_ref: { type: "string", description: "Twilio auth token to pass" },
+            },
+            required: ["twilio_token_ref"],
+          },
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "credential-in-args");
+    assert.equal(check?.severity, "fail");
+    assert.match(check?.detail ?? "", /twilio_token_ref/);
+  });
+
+  it("caps missing-input-schema score at 39 / F when other tools are listed", () => {
+    const result = runScorecard(
+      { info: { title: "relaydesk" } },
+      [
+        liveTool({
+          name: "list_incidents",
+          description: "List P1 incidents with optional severity and hub filters for operators.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              hub: { type: "string", description: "Hub code", enum: ["EAST", "WEST"] },
+            },
+            required: [],
+          },
+        }),
+        liveTool({
+          name: "sync_catalog",
+          description: "Sync the catalog after a failed inbound payload window.",
+          missingInputSchema: true,
+        }),
+      ],
+      { mode: "live" },
+    );
+    assert.equal(result.grade, "F");
+    assert.ok(result.score > 0);
+    assert.ok(result.score <= 39);
+    assert.equal(result.toolCount, 2);
+  });
+
+  it("warns on description walls over 400 characters", () => {
+    const wall = "Broadcast status to every on-call rotator. ".repeat(20);
+    const result = runScorecard(
+      { info: { title: "relaydesk" } },
+      [
+        liveTool({
+          name: "broadcast_status",
+          description: wall,
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "descriptions");
+    assert.equal(check?.severity, "warn");
+    assert.match(check?.detail ?? "", /broadcast_status/);
+  });
+
+  it("warns on purge_* names and does not treat permanently as a full mark", () => {
+    const purge = liveTool({
+      name: "purge_stale_sessions",
+      description: "Purging operation: permanently removes stale operator sessions from the hot store.",
+    });
+    const result = runScorecard({ info: { title: "relaydesk" } }, [purge], { mode: "live" });
+    const check = result.checks.find((c) => c.id === "destructive-warnings");
+    assert.equal(check?.severity, "warn");
+    assert.match(check?.detail ?? "", /purge_stale_sessions/);
+  });
+
+  it("warns on zero_* names until DESTRUCTIVE or a required confirm boolean", () => {
+    const unmarked = liveTool({
+      name: "zero_audit_trail",
+      description: "Zero inactive audit rows for the selected tenant immediately.",
+    });
+    const unmarkedResult = runScorecard({ info: { title: "relaydesk" } }, [unmarked], { mode: "live" });
+    assert.equal(unmarkedResult.checks.find((c) => c.id === "destructive-warnings")?.severity, "warn");
+
+    const confirmed = liveTool({
+      name: "zero_audit_trail",
+      description: "Zero inactive audit rows for the selected tenant immediately.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          confirm: { type: "boolean", description: "Must be true to proceed" },
+        },
+        required: ["confirm"],
+      },
+    });
+    const confirmedResult = runScorecard({ info: { title: "relaydesk" } }, [confirmed], { mode: "live" });
+    assert.equal(confirmedResult.checks.find((c) => c.id === "destructive-warnings")?.severity, "pass");
+  });
+
+  it("does not treat prefixing one sibling as marking the rest", () => {
+    const result = runScorecard(
+      { info: { title: "relaydesk" } },
+      [
+        liveTool({
+          name: "prune_orphaned_webhooks",
+          description: "DESTRUCTIVE: prune orphaned webhook rows. Requires confirmation.",
+        }),
+        liveTool({
+          name: "purge_stale_sessions",
+          description: "Purging stale operator sessions from the hot store.",
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "destructive-warnings");
+    assert.equal(check?.severity, "warn");
+    assert.match(check?.detail ?? "", /purge_stale_sessions/);
+    assert.equal((check?.detail ?? "").includes("prune_orphaned_webhooks"), false);
   });
 });

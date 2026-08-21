@@ -1,6 +1,6 @@
 {
   "name": "@coefficient-work/mcp-doctor",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "Inspect MCP servers and write a local readiness report.",
   "type": "module",
   "license": "MIT",

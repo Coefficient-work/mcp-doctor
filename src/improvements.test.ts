@@ -56,6 +56,7 @@ describe("suggestedFixesFromChecks", () => {
     const suggested = suggestedFixesFromChecks(checks, [tool]).map((f) => f.suggested).join("\n");
     assert.equal(/instance Say when/.test(suggested), false);
     assert.match(suggested, /instance\.\s+Say when/);
+    assert.match(suggested, /tokens vs current/);
   });
 
   it("suggests inputSchema when discovery fails", () => {

@@ -4,6 +4,11 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServerEntry } from "./config.js";
+import {
+  coerceListedTools,
+  humanizeListToolsError,
+  lenientListToolsResultSchema,
+} from "./inspect-errors.js";
 import { packageVersion } from "./pkg.js";
 
 export type McpSession = {
@@ -52,16 +57,57 @@ export async function connectMcpSession(
   }
 
   const version = client.getServerVersion();
-  const listed = await withTimeout(client.listTools(), timeoutMs, "listTools");
+  try {
+    const tools = await listToolsOrThrow(client, timeoutMs);
+    return {
+      client,
+      serverName,
+      transport,
+      serverInfo: version ? { name: version.name, version: version.version } : undefined,
+      tools,
+      close: () => client.close(),
+    };
+  } catch (e) {
+    await client.close().catch(() => undefined);
+    throw e;
+  }
+}
 
-  return {
-    client,
-    serverName,
-    transport,
-    serverInfo: version ? { name: version.name, version: version.version } : undefined,
-    tools: listed.tools ?? [],
-    close: () => client.close(),
-  };
+function formatErr(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return String(e);
+}
+
+async function listToolsOrThrow(client: Client, timeoutMs: number): Promise<Tool[]> {
+  try {
+    const listed = await withTimeout(client.listTools(), timeoutMs, "listTools");
+    return listed.tools ?? [];
+  } catch (e) {
+    const raw = formatErr(e);
+    try {
+      const listed = await withTimeout(
+        client.request({ method: "tools/list" }, lenientListToolsResultSchema as never),
+        timeoutMs,
+        "listTools",
+      );
+      const coerced = coerceListedTools((listed as { tools?: unknown[] }).tools ?? []);
+      if (coerced.malformed.length > 0) {
+        const m = coerced.malformed[0]!;
+        throw new Error(
+          humanizeListToolsError(
+            `expected object, received undefined at tools.${m.index}.inputSchema`,
+            coerced.tools,
+          ),
+        );
+      }
+      return coerced.tools as Tool[];
+    } catch (inner) {
+      if (inner instanceof Error && /missing required inputSchema/i.test(inner.message)) {
+        throw inner;
+      }
+      throw new Error(humanizeListToolsError(raw));
+    }
+  }
 }
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {

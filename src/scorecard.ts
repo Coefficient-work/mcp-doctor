@@ -33,17 +33,18 @@ export type ScorecardOptions = {
 
 const DESTRUCTIVE_METHODS = new Set(["DELETE", "PUT", "PATCH"]);
 const DESTRUCTIVE_NAME_RE =
-  /delete|remove|destroy|purg(e|ing|ed)|drop|cancel|nuke|flush|wipe|kill|terminate|reset|revoke|truncate|zeroing|zeroed|\bzero\b|overwrit|prun(e|ing)|reboot/i;
+  /delete|remove|destroy|purg(e|ing|ed)|drop|cancel|nuke|flush|wipe|kill|terminate|reset|revoke|truncate|zeroing|zeroed|^zero_|_zero_|\bzero\b|overwrit|prun(e|ing)|reboot/i;
 const DESTRUCTIVE_DESC_STRONG_RE =
   /purging|zeroing|wiping|destroying|nuking|truncating|irreversible|cannot be undone|wipe(s|d)? all/i;
 const UPDATE_STYLE_NAME_RE = /^(update|configure|set)_/i;
-const DESTRUCTIVE_MARKED_RE = /destructive|danger|irreversible|cannot be undone|permanent|caution/i;
+const DESTRUCTIVE_MARKED_RE = /destructive|danger|irreversible|cannot be undone|caution/i;
 const LIST_NAME_RE = /^(list|search|find)_|_list$|_search$/i;
 const SECRET_VALUE_NAME_RE =
-  /^(api[_-]?key|secret_api_key|signing_secret|pd_token|password|passwd|secret|credential)$|(^|_)(api[_-]?key|api[_-]?token|password|passwd|signing_secret)$|(^|_)token$/i;
+  /^(api[_-]?key|secret_api_key|signing_secret|pd_token|password|passwd|secret|credential)$|(^|_)(api[_-]?key|api[_-]?token|api_secret|password|passwd|signing_secret)$|(^|_)(secret|password)$|(^|_)token$/i;
 const SECRET_REFERENCE_NAME_RE = /(^|_)(ref|pointer)$|(^|_)vault(_|$)|^vault_/i;
 const SECRET_VALUE_DESC_RE =
-  /\bbearer token\b|\bhmac secret\b|\bapi key to pass\b|\bthe (actual )?(api )?key itself\b/i;
+  /\bbearer token\b|\bhmac secret\b|\bapi key to pass\b|\bauth token\b|\bthe (actual )?(api )?key itself\b/i;
+const DESCRIPTION_BLOATED_CHARS = 400;
 const COMMAND_EXEC_RE = /\bexec\b|\bshell\b|\beval\b|system\(|rm\s+-rf/;
 const IDENTIFIER_OR_QUERY_RE =
   /^(id|.+_id|sku|uuid|slug|name|query|filter.*|q|search|path|url|uri|host|email|description|text|message|content|prompt|expr|expression)$/i;
@@ -102,11 +103,22 @@ export function runScorecard(
   checks.push(...checkSecuritySmells(tools, mode));
 
   const missingSchema = tools.some((t) => t.missingInputSchema);
-  const score = tools.length === 0 || missingSchema ? 0 : computeScore(checks);
+  let score: number;
+  let grade: string;
+  if (tools.length === 0) {
+    score = 0;
+    grade = "F";
+  } else if (missingSchema) {
+    score = Math.min(computeScore(checks), 39);
+    grade = "F";
+  } else {
+    score = computeScore(checks);
+    grade = gradeFromScore(score);
+  }
   return {
     title,
     score,
-    grade: tools.length === 0 || missingSchema ? "F" : gradeFromScore(score),
+    grade,
     mode,
     checks,
     toolCount: tools.length,
@@ -243,13 +255,20 @@ function checkDescriptions(tools: ApiTool[]): ScorecardCheck[] {
     }];
   }
   const thin = tools.filter((t) => t.description.trim().length < 30);
-  if (thin.length > 0) {
+  const bloated = tools.filter((t) => t.description.trim().length > DESCRIPTION_BLOATED_CHARS);
+  if (thin.length > 0 || bloated.length > 0) {
+    const bits: string[] = [];
+    if (thin.length > 0) bits.push(`${thin.length} thin (<30 chars)`);
+    if (bloated.length > 0) bits.push(`${bloated.length} bloated (>${DESCRIPTION_BLOATED_CHARS} chars)`);
     return [{
       id: "descriptions",
       category: "docs",
       severity: "warn",
-      message: `${thin.length} tool(s) have thin descriptions (<30 chars)`,
-      detail: formatTruncatedList(thin.map((t) => t.name)),
+      message: `${bits.join("; ")} tool description(s)`,
+      detail: formatTruncatedList([
+        ...thin.map((t) => t.name),
+        ...bloated.map((t) => t.name),
+      ]),
     }];
   }
   return [{
@@ -399,9 +418,16 @@ function isDestructiveTool(tool: ApiTool): boolean {
   return DESTRUCTIVE_DESC_STRONG_RE.test(tool.description);
 }
 
+function isDestructivelyMarked(tool: ApiTool): boolean {
+  if (DESTRUCTIVE_MARKED_RE.test(tool.description)) return true;
+  const props = schemaProperties(tool.inputSchema);
+  const required = Array.isArray(tool.inputSchema.required) ? tool.inputSchema.required : [];
+  return Boolean(props.confirm) && required.includes("confirm");
+}
+
 function checkDestructiveTools(tools: ApiTool[]): ScorecardCheck[] {
   const destructive = tools.filter(isDestructiveTool);
-  const unmarked = destructive.filter((t) => !DESTRUCTIVE_MARKED_RE.test(t.description));
+  const unmarked = destructive.filter((t) => !isDestructivelyMarked(t));
 
   if (unmarked.length > 0) {
     return [{

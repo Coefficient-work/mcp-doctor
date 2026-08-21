@@ -138,9 +138,10 @@ async function runSingleModelEval(
   }
 
   const finalAnswer = result.text || undefined;
-  const succeeded =
-    result.finishReason === "stop" &&
-    /done|complete|success|here is|result|listed|found|tools?/i.test(finalAnswer ?? "");
+  const succeeded = evalTaskSucceeded({
+    finishReason: result.finishReason,
+    events,
+  });
 
   const friction = computeFriction(events, succeeded);
 
@@ -157,6 +158,19 @@ async function runSingleModelEval(
       totalTokens: result.usage?.totalTokens,
     },
   };
+}
+
+export function evalTaskSucceeded(opts: {
+  finishReason?: string;
+  events: ReplayEvent[];
+}): boolean {
+  const reason = opts.finishReason ?? "stop";
+  const okFinish = reason === "stop" || reason === "end";
+  if (!okFinish) return false;
+  const calls = opts.events.filter((e) => e.type === "tool_call");
+  if (calls.length === 0) return false;
+  const results = opts.events.filter((e) => e.type === "tool_result");
+  return results.some((e) => !e.isError);
 }
 
 function buildAiTools(session: McpSession): ToolSet {

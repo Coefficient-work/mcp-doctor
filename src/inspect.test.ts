@@ -87,6 +87,7 @@ describe("listTools schema crash UX", () => {
     );
     assert.equal(/may require auth/.test(md), false);
     assert.match(md, /inputSchema/);
+    assert.equal(md.includes("copy to Louis"), false);
   });
 
   it("isolates one malformed tool from a lenient tools/list payload", () => {
