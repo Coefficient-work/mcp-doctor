@@ -54,7 +54,8 @@ export function suggestedFixesFromChecks(checks: ScorecardCheck[], tools: ApiToo
       fixes.push({
         checkId: check.id,
         problem: check.detail ?? check.message,
-        suggested: "Declare outputSchema (or OpenAPI response schema) so agents know the return shape.",
+        suggested:
+          'Declare outputSchema so agents know the return shape, for example:\n{\n  "type": "object",\n  "properties": { "ok": { "type": "boolean" } },\n  "required": ["ok"]\n}',
       });
     }
 
@@ -116,12 +117,11 @@ export function suggestedFixesFromChecks(checks: ScorecardCheck[], tools: ApiToo
 }
 
 function expandDescription(tool: ApiTool): string {
-  const verb = tool.name.replace(/_/g, " ");
-  return `${capitalize(verb)}. Use when the agent needs to perform this operation. Required params are in inputSchema.`;
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  const current = tool.description.trim();
+  if (!current) {
+    return `Write a one-sentence purpose for ${tool.name}: what it returns and which required params the agent must pass.`;
+  }
+  return `${current} Say when to choose this tool versus siblings, not just that it performs this operation.`;
 }
 
 export function formatSuggestedFixes(fixes: SuggestedFix[]): string {

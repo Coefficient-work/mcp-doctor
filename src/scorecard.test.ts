@@ -215,3 +215,121 @@ describe("PulseOps-shaped live scorecard", () => {
     assert.equal(formatScorecardReport(result).includes("security schemes"), false);
   });
 });
+
+describe("CloudShelf 0.4.3 scorecard", () => {
+  it("scores discovery failure as 0 / F, not Grade A", () => {
+    const result = runScorecard(
+      { info: { title: "cloudshelf-mcp" } },
+      [],
+      {
+        mode: "live",
+        discoveryFailed: true,
+        discoveryError:
+          'listTools: Invalid input: expected object, received undefined at tools.6.inputSchema',
+      },
+    );
+    assert.equal(result.score, 0);
+    assert.equal(result.grade, "F");
+    assert.equal(result.toolCount, 0);
+    const discovery = result.checks.find((c) => c.id === "discovery");
+    assert.equal(discovery?.severity, "fail");
+    assert.match(discovery?.detail ?? "", /inputSchema/);
+    assert.equal(result.checks.some((c) => c.severity === "pass"), false);
+  });
+
+  it("fails 0 tools without discovery errors instead of awarding a pass", () => {
+    const result = runScorecard({ info: { title: "empty" } }, [], { mode: "live" });
+    assert.equal(result.score, 0);
+    assert.equal(result.grade, "F");
+    const count = result.checks.find((c) => c.id === "tool-count");
+    assert.equal(count?.severity, "fail");
+    assert.match(count?.message ?? "", /0 tools advertised/);
+  });
+
+  it("flags CloudShelf purging/zeroing description as destructive until CAUTION prefix", () => {
+    const unmarked = liveTool({
+      name: "recalibrate_warehouse_bins",
+      description:
+        "Recalibrates all bin coordinate partitions, purging orphaned allocations and zeroing all untracked physical bin items immediately.",
+    });
+    const unmarkedResult = runScorecard({ info: { title: "cloudshelf" } }, [unmarked], { mode: "live" });
+    const unmarkedCheck = unmarkedResult.checks.find((c) => c.id === "destructive-warnings");
+    assert.equal(unmarkedCheck?.severity, "warn");
+    assert.match(unmarkedCheck?.detail ?? "", /recalibrate_warehouse_bins/);
+
+    const marked = liveTool({
+      name: "recalibrate_warehouse_bins",
+      description:
+        "CAUTION / DESTRUCTIVE: Recalibrate coordinate partitions in a warehouse zone, purging orphaned allocations and resetting untracked physical bins.",
+    });
+    const markedResult = runScorecard({ info: { title: "cloudshelf" } }, [marked], { mode: "live" });
+    const markedCheck = markedResult.checks.find((c) => c.id === "destructive-warnings");
+    assert.equal(markedCheck?.severity, "pass");
+  });
+
+  it("treats live missing outputSchema as info, not a score warning", () => {
+    const result = runScorecard(
+      { info: { title: "cloudshelf" } },
+      [
+        liveTool({
+          name: "get_sku_inventory",
+          description: "Retrieve real-time stock levels, allocated units, and bin location breakdown for a given SKU.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              sku: { type: "string", description: "SKU", pattern: "^SKU-" },
+            },
+            required: ["sku"],
+          },
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "output-schema");
+    assert.equal(check?.severity, "info");
+  });
+
+  it("does not warn unconstrained identifier or query strings; warns enum-like names", () => {
+    const result = runScorecard(
+      { info: { title: "cloudshelf" } },
+      [
+        liveTool({
+          name: "query_raw_audit_log",
+          description: "Query warehouse compliance logs and fulfillment telemetry records by tenant and filters.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              tenant_id: { type: "string", description: "Tenant UUID" },
+              sku: { type: "string", description: "SKU" },
+              zone: { type: "string", description: "Warehouse zone" },
+              category: { type: "string", description: "Product category" },
+            },
+            required: ["tenant_id"],
+          },
+        }),
+      ],
+      { mode: "live" },
+    );
+    const unconstrained = result.checks.filter((c) => c.id === "unconstrained-strings");
+    const warn = unconstrained.find((c) => c.severity === "warn");
+    const info = unconstrained.find((c) => c.severity === "info");
+    assert.equal(warn?.severity, "warn");
+    assert.match(warn?.detail ?? "", /category/);
+    assert.equal((warn?.detail ?? "").includes("sku"), false);
+    assert.equal((warn?.detail ?? "").includes("tenant_id"), false);
+    assert.ok(info);
+    assert.match(info?.detail ?? "", /zone/);
+  });
+
+  it("shows +N more when more than 8 tools lack output schema", () => {
+    const tools = Array.from({ length: 10 }, (_, i) =>
+      liveTool({
+        name: `tool_${i}`,
+        description: "A reasonably long tool description for agent readiness checks here.",
+      }),
+    );
+    const result = runScorecard({ info: { title: "cloudshelf" } }, tools, { mode: "live" });
+    const check = result.checks.find((c) => c.id === "output-schema");
+    assert.match(check?.detail ?? "", /\(\+2 more\)/);
+  });
+});

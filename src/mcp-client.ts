@@ -4,6 +4,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServerEntry } from "./config.js";
+import { packageVersion } from "./pkg.js";
 
 export type McpSession = {
   client: Client;
@@ -19,7 +20,7 @@ export async function connectMcpSession(
   serverName: string,
   timeoutMs = 45_000,
 ): Promise<McpSession> {
-  const client = new Client({ name: "mcp-doctor", version: "0.4.0" }, { capabilities: {} });
+  const client = new Client({ name: "mcp-doctor", version: packageVersion() }, { capabilities: {} });
   let transport: "stdio" | "http" | "sse" = "stdio";
 
   if (entry.url) {

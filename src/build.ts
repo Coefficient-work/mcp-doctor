@@ -5,6 +5,7 @@ import type { OpenApiDocument } from "./openapi.js";
 import { operationsFromDoc } from "./openapi.js";
 import { cursorMcpConfig, toMcpTools } from "./mcp.js";
 import { toolsTokenCount } from "./tokens.js";
+import { packageVersion } from "./pkg.js";
 
 export type BuildResult = {
   title: string;
@@ -68,7 +69,7 @@ export async function buildMcpBundle(
       "## One-liner (demo server)",
       "",
       "```bash",
-      "npx @coefficient-work/mcp-doctor@latest serve --demo",
+      `npx @coefficient-work/mcp-doctor@${packageVersion()} serve --demo`,
       "```",
       "",
       "**Demo mode** returns simulated responses - wire your API base URL in a future release.",

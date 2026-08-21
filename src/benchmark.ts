@@ -112,7 +112,7 @@ export async function runBenchmark(
   return { rows, reports };
 }
 
-export function formatStateOfMcpReport(rows: BenchmarkRow[], date = "2026-07-10"): string {
+export function formatStateOfMcpReport(rows: BenchmarkRow[], date = new Date().toISOString().slice(0, 10)): string {
   const ok = rows.filter((r) => !r.error);
   const sorted = [...ok].sort((a, b) => b.score - a.score);
 

@@ -26,15 +26,27 @@ export type ScorecardResult = {
 
 export type ScorecardOptions = {
   mode?: ScorecardMode;
+  discoveryFailed?: boolean;
+  discoveryError?: string;
 };
 
 const DESTRUCTIVE_METHODS = new Set(["DELETE", "PUT", "PATCH"]);
 const DESTRUCTIVE_NAME_RE =
-  /delete|remove|destroy|purge|drop|cancel|nuke|flush|wipe|kill|terminate|reset|revoke|truncate/i;
+  /delete|remove|destroy|purg(e|ing|ed)|drop|cancel|nuke|flush|wipe|kill|terminate|reset|revoke|truncate|zeroing|zeroed|\bzero\b|overwrit|prun(e|ing)/i;
+const DESTRUCTIVE_MARKED_RE = /destructive|danger|irreversible|cannot be undone|permanent|caution/i;
 const LIST_NAME_RE = /^(list|search|find)_|_list$|_search$/i;
 const CREDENTIAL_NAME_RE =
   /(password|secret|credential|api[_-]?key|(^|_)token$|^token$|pd_token|bearer)/i;
 const COMMAND_EXEC_RE = /\bexec\b|\bshell\b|\beval\b|system\(|rm\s+-rf/;
+const IDENTIFIER_OR_QUERY_RE =
+  /^(id|.+_id|sku|uuid|slug|name|query|filter.*|q|search|path|url|uri|host|email|description|text|message|content|prompt|expr|expression)$/i;
+const ENUM_LIKE_NAME_RE = /^(status|type|mode|kind|category|scope|format|provider|channel|report_type|event_type)$/i;
+const DETAIL_LIST_LIMIT = 8;
+
+export function formatTruncatedList(items: string[], limit = DETAIL_LIST_LIMIT): string {
+  if (items.length <= limit) return items.join(", ");
+  return `${items.slice(0, limit).join(", ")} (+${items.length - limit} more)`;
+}
 
 export function runScorecard(
   doc: OpenApiDocument,
@@ -43,6 +55,25 @@ export function runScorecard(
 ): ScorecardResult {
   const mode = options.mode ?? "openapi";
   const title = doc.info?.title ?? "API";
+
+  if (options.discoveryFailed) {
+    return {
+      title,
+      score: 0,
+      grade: "F",
+      mode,
+      checks: [{
+        id: "discovery",
+        category: "tools",
+        severity: "fail",
+        message: "Tool discovery failed - scorecard skipped",
+        detail: options.discoveryError ?? "listTools returned no tools",
+      }],
+      toolCount: 0,
+      tokenCount: 0,
+    };
+  }
+
   const checks: ScorecardCheck[] = [];
 
   checks.push(...checkToolCount(tools, mode));
@@ -62,7 +93,7 @@ export function runScorecard(
   checks.push(...checkCredentialArgs(tools));
   checks.push(...checkSecuritySmells(tools, mode));
 
-  const score = computeScore(checks);
+  const score = tools.length === 0 ? 0 : computeScore(checks);
   return {
     title,
     score,
@@ -93,6 +124,14 @@ function gradeFromScore(score: number): string {
 
 function checkToolCount(tools: ApiTool[], mode: ScorecardMode): ScorecardCheck[] {
   const n = tools.length;
+  if (n === 0) {
+    return [{
+      id: "tool-count",
+      category: "tools",
+      severity: "fail",
+      message: "0 tools advertised - server exposes no agent-callable surface",
+    }];
+  }
   if (n > 40) {
     return [{
       id: "tool-count",
@@ -176,7 +215,7 @@ function checkDuplicateNames(tools: ApiTool[]): ScorecardCheck[] {
       category: "tools",
       severity: "warn",
       message: `${ambiguous.length} tool(s) with very short or unclear names`,
-      detail: ambiguous.slice(0, 5).map((t) => t.name).join(", "),
+      detail: formatTruncatedList(ambiguous.map((t) => t.name)),
     });
   }
 
@@ -191,7 +230,7 @@ function checkDescriptions(tools: ApiTool[]): ScorecardCheck[] {
       category: "docs",
       severity: "fail",
       message: `${missing.length}/${tools.length} tool(s) have empty or too-short descriptions`,
-      detail: missing.slice(0, 5).map((t) => t.name).join(", "),
+      detail: formatTruncatedList(missing.map((t) => t.name)),
     }];
   }
   const thin = tools.filter((t) => t.description.trim().length < 30);
@@ -201,7 +240,7 @@ function checkDescriptions(tools: ApiTool[]): ScorecardCheck[] {
       category: "docs",
       severity: "warn",
       message: `${thin.length} tool(s) have thin descriptions (<30 chars)`,
-      detail: thin.slice(0, 5).map((t) => t.name).join(", "),
+      detail: formatTruncatedList(thin.map((t) => t.name)),
     }];
   }
   return [{
@@ -226,7 +265,7 @@ function checkPropertyDescriptions(tools: ApiTool[]): ScorecardCheck[] {
       category: "docs",
       severity: "warn",
       message: `${missing.length} input property(ies) lack a description`,
-      detail: missing.slice(0, 8).join(", "),
+      detail: formatTruncatedList(missing),
     }];
   }
   return [{
@@ -238,19 +277,41 @@ function checkPropertyDescriptions(tools: ApiTool[]): ScorecardCheck[] {
 }
 
 function checkUnconstrainedStrings(tools: ApiTool[]): ScorecardCheck[] {
-  const loose: string[] = [];
+  const enumLike: string[] = [];
+  const remaining: string[] = [];
   for (const tool of tools) {
     for (const [name, schema] of Object.entries(schemaProperties(tool.inputSchema))) {
-      if (isUnconstrainedString(schema)) loose.push(`${tool.name}.${name}`);
+      if (!isUnconstrainedString(schema)) continue;
+      if (IDENTIFIER_OR_QUERY_RE.test(name)) continue;
+      const label = `${tool.name}.${name}`;
+      if (ENUM_LIKE_NAME_RE.test(name)) enumLike.push(label);
+      else remaining.push(label);
     }
   }
-  if (loose.length > 0) {
+  if (enumLike.length > 0) {
     return [{
       id: "unconstrained-strings",
       category: "schema",
       severity: "warn",
-      message: `${loose.length} string property(ies) have no enum, format, or pattern`,
-      detail: loose.slice(0, 8).join(", "),
+      message: `${enumLike.length} enum-like string(s) have no enum, format, or pattern`,
+      detail: formatTruncatedList(enumLike),
+    }, ...(remaining.length > 0
+      ? [{
+          id: "unconstrained-strings",
+          category: "schema" as const,
+          severity: "info" as const,
+          message: `${remaining.length} free-form string(s) have no enum, format, or pattern`,
+          detail: formatTruncatedList(remaining),
+        }]
+      : [])];
+  }
+  if (remaining.length > 0) {
+    return [{
+      id: "unconstrained-strings",
+      category: "schema",
+      severity: "info",
+      message: `${remaining.length} free-form string(s) have no enum, format, or pattern`,
+      detail: formatTruncatedList(remaining),
     }];
   }
   return [{
@@ -274,7 +335,7 @@ function checkMissingRequired(tools: ApiTool[]): ScorecardCheck[] {
       category: "schema",
       severity: "warn",
       message: `${missing.length} tool(s) have input properties but no required array`,
-      detail: missing.slice(0, 5).map((t) => t.name).join(", "),
+      detail: formatTruncatedList(missing.map((t) => t.name)),
     }];
   }
   return [{
@@ -298,12 +359,12 @@ function checkOutputSchema(tools: ApiTool[], mode: ScorecardMode): ScorecardChec
   return [{
     id: "output-schema",
     category: "schema",
-    severity: "warn",
+    severity: mode === "live" ? "info" : "warn",
     message:
       mode === "live"
-        ? `${missing.length} tool(s) lack an output schema`
+        ? `${missing.length} tool(s) lack an output schema (optional on live MCP)`
         : `${missing.length} operation(s) lack a response schema`,
-    detail: missing.slice(0, 5).map((t) => t.name).join(", "),
+    detail: formatTruncatedList(missing.map((t) => t.name)),
   }];
 }
 
@@ -314,9 +375,7 @@ function checkDestructiveTools(tools: ApiTool[]): ScorecardCheck[] {
       DESTRUCTIVE_NAME_RE.test(t.name) ||
       DESTRUCTIVE_NAME_RE.test(t.description),
   );
-  const unmarked = destructive.filter(
-    (t) => !/destructive|danger|irreversible|cannot be undone|permanent/i.test(t.description),
-  );
+  const unmarked = destructive.filter((t) => !DESTRUCTIVE_MARKED_RE.test(t.description));
 
   if (unmarked.length > 0) {
     return [{
@@ -324,7 +383,7 @@ function checkDestructiveTools(tools: ApiTool[]): ScorecardCheck[] {
       category: "safety",
       severity: "warn",
       message: `${unmarked.length} destructive tool(s) without explicit warnings in description`,
-      detail: unmarked.slice(0, 5).map((t) => t.name).join(", "),
+      detail: formatTruncatedList(unmarked.map((t) => t.name)),
     }];
   }
   if (destructive.length > 0) {
@@ -398,7 +457,7 @@ function checkPagination(tools: ApiTool[]): ScorecardCheck[] {
       category: "schema",
       severity: "warn",
       message: `${lacking.length} list/search tool(s) may lack pagination parameters`,
-      detail: lacking.slice(0, 5).map((t) => t.name).join(", "),
+      detail: formatTruncatedList(lacking.map((t) => t.name)),
     }];
   }
   return [{
@@ -470,7 +529,7 @@ function checkCredentialArgs(tools: ApiTool[]): ScorecardCheck[] {
       category: "auth",
       severity: "fail",
       message: `${leaks.length} tool argument(s) look like secrets in the LLM-visible schema`,
-      detail: leaks.slice(0, 8).join(", "),
+      detail: formatTruncatedList(leaks),
     }];
   }
   return [{
@@ -499,7 +558,7 @@ function checkSecuritySmells(tools: ApiTool[], mode: ScorecardMode): ScorecardCh
       category: "safety",
       severity: "fail",
       message: `${smells.length} potential security smell(s)`,
-      detail: smells.slice(0, 5).join("; "),
+      detail: formatTruncatedList(smells),
     }];
   }
   return [{

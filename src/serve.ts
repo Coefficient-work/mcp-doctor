@@ -6,13 +6,14 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import type { ApiTool } from "./openapi.js";
 import { toMcpTools } from "./mcp.js";
+import { packageVersion } from "./pkg.js";
 
 export async function runMcpServer(tools: ApiTool[], serverTitle: string): Promise<void> {
   const mcpTools = toMcpTools(tools);
   const toolMap = new Map(tools.map((t) => [t.name, t]));
 
   const server = new Server(
-    { name: "mcp-doctor", version: "0.2.0" },
+    { name: "mcp-doctor", version: packageVersion() },
     { capabilities: { tools: {} } },
   );
 
