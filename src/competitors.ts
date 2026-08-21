@@ -55,33 +55,21 @@ export function publicRegistry(registry: CompetitorRegistry): {
 export function formatCompetitorReport(
   registry: CompetitorRegistry,
   categoryFilter?: string,
-  options?: { internal?: boolean },
 ): string {
-  const internal = options?.internal === true;
   const lines = [
     "# MCP Doctor - competitor map",
     "",
-    ...(internal ? [`_${registry.positioning}_`, ""] : []),
     `Updated: ${registry.updated}`,
     "",
   ];
 
   for (const [key, cat] of Object.entries(registry.categories)) {
     if (categoryFilter && key !== categoryFilter) continue;
-    if (internal) {
-      lines.push(`## ${cat.label}`, "");
-      lines.push("| Company | Threat | Overlap | Our angle |");
-      lines.push("|---------|--------|---------|-----------|");
-      for (const c of cat.competitors) {
-        lines.push(`| [${c.name}](${c.url}) | ${c.threat} | ${c.overlap} | ${c.ourAngle} |`);
-      }
-    } else {
-      lines.push(`## ${cat.label}`, "");
-      lines.push("| Company | Overlap |");
-      lines.push("|---------|---------|");
-      for (const c of cat.competitors) {
-        lines.push(`| [${c.name}](${c.url}) | ${c.overlap} |`);
-      }
+    lines.push(`## ${cat.label}`, "");
+    lines.push("| Company | Overlap |");
+    lines.push("|---------|---------|");
+    for (const c of cat.competitors) {
+      lines.push(`| [${c.name}](${c.url}) | ${c.overlap} |`);
     }
     lines.push("");
   }

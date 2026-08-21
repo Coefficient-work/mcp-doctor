@@ -79,6 +79,7 @@ See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md).
 | `inspect <name>` | Live connect + scorecard + suggested fixes |
 | `eval <name> --task "..."` | BYOK agent eval + friction + replay (OpenAI, Anthropic, Gateway, or Ollama) |
 | `test --demo` | Static scorecard on OpenAPI fixture |
+| `build --demo --out <dir>` | Write optimized MCP tool bundle (requires `--out`) |
 | `competitors` | Adjacent MCP tooling map |
 
 ## Roadmap

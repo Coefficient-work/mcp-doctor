@@ -5,6 +5,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServerEntry } from "./config.js";
 import type { ApiTool } from "./openapi.js";
+import { packageVersion } from "./pkg.js";
 
 export type LiveInspectResult = {
   serverName: string;
@@ -40,7 +41,7 @@ export async function inspectLiveMcp(
   const errors: string[] = [];
   const start = Date.now();
 
-  const client = new Client({ name: "mcp-doctor", version: "0.3.0" }, { capabilities: {} });
+  const client = new Client({ name: "mcp-doctor", version: packageVersion() }, { capabilities: {} });
   let transport: "stdio" | "http" | "sse" = "stdio";
 
   if (entry.url) {
@@ -181,7 +182,7 @@ export function formatInspectReport(live: LiveInspectResult, scorecardMd: string
   if (live.tools.length > 0) {
     lines.push("", "## Tools discovered", "");
     for (const t of live.tools.slice(0, 40)) {
-      lines.push(`- \`${t.name}\` - ${(t.description ?? "").slice(0, 100)}`);
+      lines.push(`- \`${t.name}\` - ${truncateAtWord(t.description ?? "", 100)}`);
     }
     if (live.tools.length > 40) {
       lines.push(`- _-and ${live.tools.length - 40} more_`);
@@ -209,4 +210,13 @@ export function formatInspectReport(live: LiveInspectResult, scorecardMd: string
   );
 
   return lines.join("\n");
+}
+
+export function truncateAtWord(text: string, max = 100): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  const sliced = t.slice(0, max);
+  const sp = sliced.lastIndexOf(" ");
+  const base = (sp > Math.floor(max * 0.4) ? sliced.slice(0, sp) : sliced).trimEnd();
+  return `${base}...`;
 }

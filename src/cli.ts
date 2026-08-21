@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { Command } from "commander";
 import { loadEnvLocal } from "./env.js";
 
@@ -23,16 +21,15 @@ import {
 import { formatEvalReport, runEval } from "./eval.js";
 import { formatSuggestedFixes, suggestedFixesFromChecks } from "./improvements.js";
 import { formatInspectReport, inspectLiveMcp, mcpToolToApiTool } from "./inspect.js";
-import { demoFixturePath, loadOpenApi } from "./load.js";
+import { loadOpenApi, requireOpenApiSpec } from "./load.js";
 import { defaultOptimize } from "./optimize.js";
 import { operationsFromDoc } from "./openapi.js";
+import { packageVersion } from "./pkg.js";
 import { formatAnalyzeReport } from "./report.js";
 import { formatScorecardReport, runScorecard } from "./scorecard.js";
 import { runMcpServer } from "./serve.js";
 
-const { version } = JSON.parse(
-  readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../package.json"), "utf8"),
-) as { version: string };
+const version = packageVersion();
 
 const program = new Command();
 
@@ -48,26 +45,6 @@ program
       "OpenAPI spec: test, analyze, build, serve",
     ].join("\n"),
   );
-
-async function resolveSpec(spec: string): Promise<string> {
-  if (spec === "--demo") {
-    return demoFixturePath();
-  }
-  if (spec.startsWith("http://") || spec.startsWith("https://")) {
-    return spec;
-  }
-  return resolve(spec);
-}
-
-function requireOpenApiSpec(spec: string | undefined, demo: boolean | undefined, command: string): Promise<string> {
-  if (demo) return Promise.resolve(demoFixturePath());
-  if (!spec) {
-    throw new Error(
-      `${command} needs an OpenAPI spec path/URL, or --demo. It does not take an MCP server name.`,
-    );
-  }
-  return resolveSpec(spec);
-}
 
 function parseHeaders(headers: string[] | undefined): Record<string, string> {
   const out: Record<string, string> = {};
@@ -105,7 +82,7 @@ program
     if (Object.keys(servers).length === 0) {
       console.log("  (no servers - add one in Cursor Settings > MCP)");
     } else {
-      console.log(`\nInspect: npx @coefficient-work/mcp-doctor@latest inspect <name>`);
+      console.log(`\nInspect: npx @coefficient-work/mcp-doctor@${version} inspect <name>`);
     }
   });
 
@@ -152,7 +129,13 @@ program
       const live = await inspectLiveMcp(entry, serverName, { timeoutMs: opts.timeout });
       const apiTools = live.tools.map(mcpToolToApiTool);
       const title = live.serverInfo?.name ?? serverName;
-      const scorecard = runScorecard({ info: { title } }, apiTools, { mode: "live" });
+      const listToolsError = live.errors.find((e) => e.startsWith("listTools:"));
+      const discoveryFailed = Boolean(listToolsError) || (live.toolCount === 0 && live.errors.length > 0);
+      const scorecard = runScorecard({ info: { title } }, apiTools, {
+        mode: "live",
+        discoveryFailed,
+        discoveryError: listToolsError ?? live.errors[0],
+      });
       const fixes = suggestedFixesFromChecks(scorecard.checks, apiTools);
       const report = [
         formatInspectReport(live, formatScorecardReport(scorecard)),
@@ -337,10 +320,13 @@ program
   .description("Write optimized MCP tool bundle from an OpenAPI spec")
   .argument("[spec]", "OpenAPI path or URL")
   .option("--demo", "Use bundled demo API")
-  .option("-o, --out <dir>", "Output directory", "./mcp-doctor-out")
+  .option("-o, --out <dir>", "Output directory")
   .option("-b, --budget <tokens>", "Token budget", parseInt)
   .option("-n, --name <name>", "MCP server name in config", "mcp-doctor")
-  .action(async (spec: string | undefined, opts: { demo?: boolean; out: string; budget?: number; name: string }) => {
+  .action(async (spec: string | undefined, opts: { demo?: boolean; out?: string; budget?: number; name: string }) => {
+    if (!opts.out) {
+      throw new Error("build needs --out <dir>");
+    }
     const filePath = await requireOpenApiSpec(spec, opts.demo, "build");
     const doc = await loadOpenApi(filePath);
     const specArg = opts.demo ? "--demo" : spec!.startsWith("http") ? spec! : filePath;
@@ -380,14 +366,13 @@ program
   .command("competitors")
   .description("Show adjacent MCP tooling (public overlap map)")
   .option("-c, --category <name>", "Filter: standards|generation|gateway|testing|adjacent")
-  .option("--internal", "Include internal strategy columns")
-  .option("--json", "Print registry JSON")
-  .action((opts: { category?: string; json?: boolean; internal?: boolean }) => {
+  .option("--json", "Print public overlap JSON")
+  .action((opts: { category?: string; json?: boolean }) => {
     const registry = loadRegistry();
     if (opts.json) {
-      console.log(JSON.stringify(opts.internal ? registry : publicRegistry(registry), null, 2));
+      console.log(JSON.stringify(publicRegistry(registry), null, 2));
     } else {
-      console.log(formatCompetitorReport(registry, opts.category, { internal: opts.internal }));
+      console.log(formatCompetitorReport(registry, opts.category));
     }
   });
 
