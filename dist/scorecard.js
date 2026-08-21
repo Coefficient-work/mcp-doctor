@@ -57,11 +57,12 @@ export function runScorecard(doc, tools = operationsFromDoc(doc), options = {}) 
     }
     checks.push(...checkCredentialArgs(tools));
     checks.push(...checkSecuritySmells(tools, mode));
-    const score = tools.length === 0 ? 0 : computeScore(checks);
+    const missingSchema = tools.some((t) => t.missingInputSchema);
+    const score = tools.length === 0 || missingSchema ? 0 : computeScore(checks);
     return {
         title,
         score,
-        grade: gradeFromScore(score),
+        grade: tools.length === 0 || missingSchema ? "F" : gradeFromScore(score),
         mode,
         checks,
         toolCount: tools.length,

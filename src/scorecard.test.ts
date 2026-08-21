@@ -487,5 +487,7 @@ describe("BeaconHub 0.4.4 scorecard", () => {
     const check = result.checks.find((c) => c.id === "missing-input-schema");
     assert.equal(check?.severity, "fail");
     assert.match(check?.detail ?? "", /reboot_canary/);
+    assert.equal(result.score, 0);
+    assert.equal(result.grade, "F");
   });
 });
