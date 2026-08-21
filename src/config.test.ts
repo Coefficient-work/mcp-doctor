@@ -1,9 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getServerEntry, loadMcpConfig } from "./config.js";
+import { getServerEntry, loadMcpConfig, resolveMcpConfigPath } from "./config.js";
 import { mcpToolToApiTool } from "./inspect.js";
 import { runScorecard } from "./scorecard.js";
 
@@ -24,9 +24,27 @@ describe("loadMcpConfig", () => {
       }),
     );
     const config = loadMcpConfig(path);
-    const vooma = getServerEntry(config, "vooma");
+    const vooma = getServerEntry(config, "vooma", path);
     assert.equal(vooma.url, "https://mcp.example.com/v1");
-    assert.throws(() => getServerEntry(config, "missing"));
+    assert.throws(
+      () => getServerEntry(config, "missing", path),
+      /Pass --config/,
+    );
+  });
+
+  it("prefers cwd mcp.json over home Cursor config", () => {
+    const dir = mkdtempSync(join(tmpdir(), "mcp-doctor-cwd-"));
+    writeFileSync(
+      join(dir, "mcp.json"),
+      JSON.stringify({ mcpServers: { pulseops: { command: "node", args: ["index.js"] } } }),
+    );
+    const previous = process.cwd();
+    try {
+      process.chdir(dir);
+      assert.equal(resolveMcpConfigPath(), join(realpathSync(dir), "mcp.json"));
+    } finally {
+      process.chdir(previous);
+    }
   });
 });
 
@@ -39,7 +57,7 @@ describe("mcpToolToApiTool + scorecard", () => {
         inputSchema: { type: "object", properties: { id: { type: "string" } } },
       }),
     ];
-    const result = runScorecard({ info: { title: "Vooma MCP (test)" } }, tools);
+    const result = runScorecard({ info: { title: "Vooma MCP (test)" } }, tools, { mode: "live" });
     assert.equal(result.toolCount, 1);
     assert.ok(result.score > 0);
   });

@@ -1,6 +1,6 @@
 {
   "name": "@coefficient-work/mcp-doctor",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Inspect MCP servers and write a local readiness report.",
   "type": "module",
   "license": "MIT",
@@ -47,6 +47,9 @@
     "analyze": "node dist/cli.js analyze --demo"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.40",
+    "@ai-sdk/openai": "^4.0.45",
+    "@ai-sdk/openai-compatible": "^3.0.34",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "ai": "^7.0.0",
     "commander": "^13.1.0",

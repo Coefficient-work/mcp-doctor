@@ -14,6 +14,20 @@ export type CompetitorRegistry = {
         competitors: Competitor[];
     }>;
 };
+export type PublicCompetitor = {
+    id: string;
+    name: string;
+    url: string;
+    overlap: string;
+};
 export declare function loadRegistry(): CompetitorRegistry;
-export declare function formatCompetitorReport(registry: CompetitorRegistry, categoryFilter?: string): string;
-export declare function listCompetitorIds(registry: CompetitorRegistry): string[];
+export declare function publicRegistry(registry: CompetitorRegistry): {
+    updated: string;
+    categories: Record<string, {
+        label: string;
+        competitors: PublicCompetitor[];
+    }>;
+};
+export declare function formatCompetitorReport(registry: CompetitorRegistry, categoryFilter?: string, options?: {
+    internal?: boolean;
+}): string;

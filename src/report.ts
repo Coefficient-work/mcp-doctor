@@ -28,20 +28,20 @@ export function formatAnalyzeReport(
   lines.push("", "## Top token consumers (baseline)", "");
   const ranked = perToolTokens(tools).sort((a, b) => b.tokens - a.tokens).slice(0, 10);
   for (const row of ranked) {
-    lines.push(`- \`${row.name}\` ù ${row.tokens} tokens`);
+    lines.push(`- \`${row.name}\` - ${row.tokens} tokens`);
   }
 
   if (optimized) {
     lines.push("", "## Optimized tool surface", "");
     for (const tool of optimized.tools) {
-      lines.push(`- \`${tool.name}\` (${tool.tag}) ù ${tool.description.slice(0, 72)}ù`);
+      lines.push(`- \`${tool.name}\` (${tool.tag}) - ${tool.description.slice(0, 72)}-`);
     }
   }
 
   lines.push(
     "",
     "---",
-    "_Token estimate: JSON-serialized MCP tool definitions ù 4 (concierge benchmark)._",
+    "_Token estimate: JSON-serialized MCP tool definitions - 4 (concierge benchmark)._",
   );
 
   return lines.join("\n");

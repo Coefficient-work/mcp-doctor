@@ -24,6 +24,7 @@ export type ApiTool = {
   method: string;
   path: string;
   inputSchema: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
   /** Original operations when using group-by-tag discovery. */
   children?: ApiTool[];
 };
@@ -47,9 +48,8 @@ export function operationsFromDoc(doc: OpenApiDocument): ApiTool[] {
       const op = operation as Operation;
       const tag = op.tags?.[0] ?? "default";
       const name = sanitizeToolName(op.operationId ?? `${method}_${path}`);
-      const description =
-        [op.summary, op.description].filter(Boolean).join(" ù ") ||
-        `${method.toUpperCase()} ${path}`;
+      const parts = [op.summary, op.description].filter(Boolean);
+      const description = parts.join(" -- ") || `${method.toUpperCase()} ${path}`;
 
       tools.push({
         name,
@@ -58,6 +58,7 @@ export function operationsFromDoc(doc: OpenApiDocument): ApiTool[] {
         method: method.toUpperCase(),
         path,
         inputSchema: buildInputSchema(op),
+        outputSchema: responseSchemaFromOperation(op),
       });
     }
   }
@@ -106,4 +107,17 @@ function buildInputSchema(operation: Operation): Record<string, unknown> {
     properties,
     ...(required.length ? { required } : {}),
   };
+}
+
+function responseSchemaFromOperation(operation: Operation): Record<string, unknown> | undefined {
+  const responses = operation.responses ?? {};
+  for (const code of ["200", "201", "default"]) {
+    const response = responses[code] as
+      | { content?: Record<string, { schema?: Record<string, unknown> }>; schema?: Record<string, unknown> }
+      | undefined;
+    const json = response?.content?.["application/json"]?.schema;
+    if (json) return json;
+    if (response?.schema) return response.schema;
+  }
+  return undefined;
 }

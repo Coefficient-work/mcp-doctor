@@ -14,7 +14,7 @@ import {
   resolveMcpConfigPath,
   type McpServerEntry,
 } from "./config.js";
-import { formatCompetitorReport, loadRegistry } from "./competitors.js";
+import { formatCompetitorReport, loadRegistry, publicRegistry } from "./competitors.js";
 import {
   formatStateOfMcpReport,
   loadBenchmarkCatalog,
@@ -39,7 +39,15 @@ const program = new Command();
 program
   .name("mcp-doctor")
   .description("Inspect MCP servers and write a local readiness report")
-  .version(version);
+  .version(version)
+  .addHelpText(
+    "after",
+    [
+      "",
+      "Live MCP:     list, inspect, eval, benchmark",
+      "OpenAPI spec: test, analyze, build, serve",
+    ].join("\n"),
+  );
 
 async function resolveSpec(spec: string): Promise<string> {
   if (spec === "--demo") {
@@ -49,6 +57,16 @@ async function resolveSpec(spec: string): Promise<string> {
     return spec;
   }
   return resolve(spec);
+}
+
+function requireOpenApiSpec(spec: string | undefined, demo: boolean | undefined, command: string): Promise<string> {
+  if (demo) return Promise.resolve(demoFixturePath());
+  if (!spec) {
+    throw new Error(
+      `${command} needs an OpenAPI spec path/URL, or --demo. It does not take an MCP server name.`,
+    );
+  }
+  return resolveSpec(spec);
 }
 
 function parseHeaders(headers: string[] | undefined): Record<string, string> {
@@ -61,10 +79,19 @@ function parseHeaders(headers: string[] | undefined): Record<string, string> {
   return out;
 }
 
+function printCliError(err: unknown): never {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(`Error: ${message}`);
+  if (process.env.DEBUG === "1" && err instanceof Error && err.stack) {
+    console.error(err.stack);
+  }
+  process.exit(1);
+}
+
 program
   .command("list")
-  .description("List MCP servers from your Cursor / Claude config")
-  .option("--config <path>", "Path to mcp.json (default: auto-detect)")
+  .description("List MCP servers from Cursor/Claude config or ./mcp.json")
+  .option("--config <path>", "Path to mcp.json (default: ./mcp.json, then Cursor/Claude)")
   .action((opts: { config?: string }) => {
     const path = resolveMcpConfigPath(opts.config);
     const config = loadMcpConfig(path);
@@ -76,7 +103,7 @@ program
       console.log(`    ${kind}`);
     }
     if (Object.keys(servers).length === 0) {
-      console.log("  (no servers ? add one in Cursor Settings ? MCP)");
+      console.log("  (no servers - add one in Cursor Settings > MCP)");
     } else {
       console.log(`\nInspect: npx @coefficient-work/mcp-doctor@latest inspect <name>`);
     }
@@ -87,10 +114,10 @@ program
   .description("Connect to a live MCP server and run agent-readiness scorecard")
   .option("--config <path>", "Path to mcp.json")
   .option("--url <url>", "MCP HTTP/SSE endpoint (skip config file)")
-  .option("-H, --header <key:value>", "HTTP header (repeatable)", (v, acc: string[]) => [...acc, v], [])
+  .option("-H, --header <key:value>", "HTTP header (repeatable)", (v: string, acc: string[]) => [...acc, v], [] as string[])
   .option("-o, --out <file>", "Write markdown report to file")
   .option("--json", "Print JSON result")
-  .option("--timeout <ms>", "Connection timeout", (v) => parseInt(v, 10), 45_000)
+  .option("--timeout <ms>", "Connection timeout", (v: string) => parseInt(v, 10), 45_000)
   .action(
     async (
       server: string | undefined,
@@ -111,13 +138,11 @@ program
         entry = { url: opts.url, headers: parseHeaders(opts.header) };
       } else {
         if (!server) {
-          console.error("Usage: mcp-doctor inspect <server-name>  OR  --url <mcp-endpoint>");
-          console.error("Run `mcp-doctor list` to see configured server names.");
-          process.exit(1);
+          throw new Error("Usage: mcp-doctor inspect <server-name>  OR  --url <mcp-endpoint>. Run `mcp-doctor list` first.");
         }
         serverName = server;
         const path = resolveMcpConfigPath(opts.config);
-        entry = getServerEntry(loadMcpConfig(path), serverName);
+        entry = getServerEntry(loadMcpConfig(path), serverName, path);
         if (opts.header?.length) {
           entry = { ...entry, headers: { ...entry.headers, ...parseHeaders(opts.header) } };
         }
@@ -127,7 +152,7 @@ program
       const live = await inspectLiveMcp(entry, serverName, { timeoutMs: opts.timeout });
       const apiTools = live.tools.map(mcpToolToApiTool);
       const title = live.serverInfo?.name ?? serverName;
-      const scorecard = runScorecard({ info: { title } }, apiTools);
+      const scorecard = runScorecard({ info: { title } }, apiTools, { mode: "live" });
       const fixes = suggestedFixesFromChecks(scorecard.checks, apiTools);
       const report = [
         formatInspectReport(live, formatScorecardReport(scorecard)),
@@ -155,17 +180,104 @@ program
   );
 
 program
+  .command("eval [server]")
+  .description("BYOK agent eval against a live MCP server (task success, friction, replay)")
+  .option("--config <path>", "Path to mcp.json")
+  .option("--url <url>", "MCP HTTP endpoint")
+  .option("-H, --header <key:value>", "HTTP header", (v: string, acc: string[]) => [...acc, v], [] as string[])
+  .option("-t, --task <text>", "Task for the agent to complete")
+  .option("-m, --model <name>", "Model slug (openai/gpt-4o-mini, anthropic/claude-sonnet-4, ollama/llama3.2)", "openai/gpt-4o-mini")
+  .option("--models <names>", "Comma-separated models for compatibility matrix")
+  .option("-o, --out <file>", "Write markdown report")
+  .option("--json", "Print JSON")
+  .action(
+    async (
+      server: string | undefined,
+      opts: {
+        config?: string;
+        url?: string;
+        header?: string[];
+        task?: string;
+        model?: string;
+        models?: string;
+        out?: string;
+        json?: boolean;
+      },
+    ) => {
+      let serverName: string;
+      let entry: McpServerEntry;
+      if (opts.url) {
+        serverName = server ?? "remote-mcp";
+        entry = { url: opts.url, headers: parseHeaders(opts.header) };
+      } else {
+        if (!server) {
+          throw new Error('Usage: mcp-doctor eval <server> --task "..."');
+        }
+        serverName = server;
+        const path = resolveMcpConfigPath(opts.config);
+        entry = getServerEntry(loadMcpConfig(path), serverName, path);
+      }
+
+      const task = opts.task ?? "List all MCP tools and describe what each one does.";
+      const models = opts.models?.split(",").map((s) => s.trim()) ?? [opts.model ?? "openai/gpt-4o-mini"];
+
+      console.error(`Evaluating ${serverName} with ${models.join(", ")}...`);
+      const result = await runEval(entry, serverName, { task, models });
+      const report = formatEvalReport(result);
+
+      if (opts.json) console.log(JSON.stringify(result, null, 2));
+      else console.log(report);
+
+      if (opts.out) {
+        await writeFile(resolve(opts.out), report, "utf8");
+        console.error(`Wrote ${opts.out}`);
+      }
+    },
+  );
+
+program
+  .command("benchmark")
+  .description("Score public MCP servers from the bundled catalog (live MCP)")
+  .option("-c, --catalog <path>", "benchmark-catalog.json path")
+  .option("-o, --out <dir>", "Write reports directory (omit to print summary only)")
+  .option("--limit <n>", "Max servers to run", (v: string) => parseInt(v, 10))
+  .option("--json", "Print summary JSON only")
+  .action(async (opts: { catalog?: string; out?: string; limit?: number; json?: boolean }) => {
+    let entries = loadBenchmarkCatalog(opts.catalog);
+    if (opts.limit) entries = entries.slice(0, opts.limit);
+
+    console.error(`Benchmarking ${entries.length} MCP servers...`);
+    const result = await runBenchmark(entries);
+    const summary = formatStateOfMcpReport(result.rows);
+
+    if (opts.json) {
+      console.log(JSON.stringify({ rows: result.rows }, null, 2));
+    } else {
+      console.log(summary);
+    }
+
+    if (opts.out) {
+      const { mkdir } = await import("node:fs/promises");
+      await mkdir(resolve(opts.out), { recursive: true });
+      await writeFile(resolve(opts.out, "STATE-OF-MCP-2026.md"), summary, "utf8");
+      for (const r of result.reports) {
+        await writeFile(resolve(opts.out, `${r.id}.md`), r.markdown, "utf8");
+      }
+      console.error(`Wrote ${result.reports.length} reports to ${opts.out}/`);
+    }
+  });
+
+program
   .command("test")
-  .description("Run agent-readiness scorecard (static checks from OpenAPI)")
+  .description("Run agent-readiness scorecard from an OpenAPI spec")
   .argument("[spec]", "OpenAPI path or URL")
-  .option("--demo", "Use bundled demo API (default if spec omitted)")
+  .option("--demo", "Use bundled demo API")
   .option("-o, --out <file>", "Write markdown report to file")
   .option("--json", "Print JSON scorecard")
   .action(async (spec: string | undefined, opts: { demo?: boolean; out?: string; json?: boolean }) => {
-    const useDemo = opts.demo || !spec;
-    const filePath = useDemo ? demoFixturePath() : await resolveSpec(spec!);
+    const filePath = await requireOpenApiSpec(spec, opts.demo, "test");
     const doc = await loadOpenApi(filePath);
-    const result = runScorecard(doc);
+    const result = runScorecard(doc, undefined, { mode: "openapi" });
 
     if (opts.json) {
       console.log(JSON.stringify(result, null, 2));
@@ -181,15 +293,14 @@ program
 
 program
   .command("analyze")
-  .description("Report token footprint and optimization opportunities")
+  .description("Report token footprint from an OpenAPI spec (not an MCP server name)")
   .argument("[spec]", "OpenAPI path or URL")
-  .option("--demo", "Use bundled demo API (default if spec omitted)")
+  .option("--demo", "Use bundled demo API")
   .option("-o, --out <file>", "Write markdown report to file")
   .option("-b, --budget <tokens>", "Token budget for final fit pass", parseInt)
   .option("--json", "Print JSON summary to stdout")
   .action(async (spec: string | undefined, opts: { demo?: boolean; out?: string; budget?: number; json?: boolean }) => {
-    const useDemo = opts.demo || !spec;
-    const filePath = useDemo ? demoFixturePath() : await resolveSpec(spec!);
+    const filePath = await requireOpenApiSpec(spec, opts.demo, "analyze");
     const doc = await loadOpenApi(filePath);
     const tools = operationsFromDoc(doc);
     const title = doc.info?.title ?? filePath;
@@ -223,17 +334,16 @@ program
 
 program
   .command("build")
-  .description("Write optimized MCP tool bundle + Cursor config snippet")
+  .description("Write optimized MCP tool bundle from an OpenAPI spec")
   .argument("[spec]", "OpenAPI path or URL")
-  .option("--demo", "Use bundled demo API (default if spec omitted)")
+  .option("--demo", "Use bundled demo API")
   .option("-o, --out <dir>", "Output directory", "./mcp-doctor-out")
   .option("-b, --budget <tokens>", "Token budget", parseInt)
   .option("-n, --name <name>", "MCP server name in config", "mcp-doctor")
   .action(async (spec: string | undefined, opts: { demo?: boolean; out: string; budget?: number; name: string }) => {
-    const useDemo = opts.demo || !spec;
-    const filePath = useDemo ? demoFixturePath() : await resolveSpec(spec!);
+    const filePath = await requireOpenApiSpec(spec, opts.demo, "build");
     const doc = await loadOpenApi(filePath);
-    const specArg = useDemo ? "--demo" : spec!.startsWith("http") ? spec! : filePath;
+    const specArg = opts.demo ? "--demo" : spec!.startsWith("http") ? spec! : filePath;
     const result = await buildMcpBundle(doc, opts.out, {
       budget: opts.budget,
       serverName: opts.name,
@@ -253,13 +363,12 @@ program
 
 program
   .command("serve")
-  .description("Run stdio MCP server (demo mode ? simulated API responses)")
+  .description("Run a stdio MCP server from an OpenAPI spec (simulated API responses)")
   .argument("[spec]", "OpenAPI path or URL")
-  .option("--demo", "Use bundled demo API (default if spec omitted)")
+  .option("--demo", "Use bundled demo API")
   .option("-b, --budget <tokens>", "Token budget", parseInt)
   .action(async (spec: string | undefined, opts: { demo?: boolean; budget?: number }) => {
-    const useDemo = opts.demo || !spec;
-    const filePath = useDemo ? demoFixturePath() : await resolveSpec(spec!);
+    const filePath = await requireOpenApiSpec(spec, opts.demo, "serve");
     const doc = await loadOpenApi(filePath);
     const title = doc.info?.title ?? "API";
     const tools = operationsFromDoc(doc);
@@ -269,102 +378,17 @@ program
 
 program
   .command("competitors")
-  .description("Show competitor map (from ChatGPT + desk research)")
+  .description("Show adjacent MCP tooling (public overlap map)")
   .option("-c, --category <name>", "Filter: standards|generation|gateway|testing|adjacent")
+  .option("--internal", "Include internal strategy columns")
   .option("--json", "Print registry JSON")
-  .action((opts: { category?: string; json?: boolean }) => {
+  .action((opts: { category?: string; json?: boolean; internal?: boolean }) => {
     const registry = loadRegistry();
     if (opts.json) {
-      console.log(JSON.stringify(registry, null, 2));
+      console.log(JSON.stringify(opts.internal ? registry : publicRegistry(registry), null, 2));
     } else {
-      console.log(formatCompetitorReport(registry, opts.category));
+      console.log(formatCompetitorReport(registry, opts.category, { internal: opts.internal }));
     }
-  });
-
-program
-  .command("eval [server]")
-  .description("BYOK agent eval ? task success, friction score, replay timeline")
-  .option("--config <path>", "Path to mcp.json")
-  .option("--url <url>", "MCP HTTP endpoint")
-  .option("-H, --header <key:value>", "HTTP header", (v, acc: string[]) => [...acc, v], [])
-  .option("-t, --task <text>", "Task for the agent to complete")
-  .option("-m, --model <name>", "AI Gateway model slug (e.g. openai/gpt-4o-mini)", "openai/gpt-4o-mini")
-  .option("--models <names>", "Comma-separated models for compatibility matrix")
-  .option("-o, --out <file>", "Write markdown report")
-  .option("--json", "Print JSON")
-  .action(
-    async (
-      server: string | undefined,
-      opts: {
-        config?: string;
-        url?: string;
-        header?: string[];
-        task?: string;
-        model?: string;
-        models?: string;
-        out?: string;
-        json?: boolean;
-      },
-    ) => {
-      let serverName: string;
-      let entry: McpServerEntry;
-      if (opts.url) {
-        serverName = server ?? "remote-mcp";
-        entry = { url: opts.url, headers: parseHeaders(opts.header) };
-      } else {
-        if (!server) {
-          console.error("Usage: mcp-doctor eval <server> --task \"...\"");
-          process.exit(1);
-        }
-        serverName = server;
-        entry = getServerEntry(loadMcpConfig(resolveMcpConfigPath(opts.config)), serverName);
-      }
-
-      const task = opts.task ?? "List all MCP tools and describe what each one does.";
-      const models = opts.models?.split(",").map((s) => s.trim()) ?? [opts.model ?? "openai/gpt-4o-mini"];
-
-      console.error(`Evaluating ${serverName} with ${models.join(", ")}...`);
-      const result = await runEval(entry, serverName, { task, models });
-      const report = formatEvalReport(result);
-
-      if (opts.json) console.log(JSON.stringify(result, null, 2));
-      else console.log(report);
-
-      if (opts.out) {
-        await writeFile(resolve(opts.out), report, "utf8");
-        console.error(`Wrote ${opts.out}`);
-      }
-    },
-  );
-
-program
-  .command("benchmark")
-  .description("State of MCP Quality ? score public MCP servers from catalog")
-  .option("-c, --catalog <path>", "benchmark-catalog.json path")
-  .option("-o, --out <dir>", "Write reports directory", "./examples/reports")
-  .option("--limit <n>", "Max servers to run", (v) => parseInt(v, 10))
-  .option("--json", "Print summary JSON only")
-  .action(async (opts: { catalog?: string; out: string; limit?: number; json?: boolean }) => {
-    let entries = loadBenchmarkCatalog(opts.catalog);
-    if (opts.limit) entries = entries.slice(0, opts.limit);
-
-    console.error(`Benchmarking ${entries.length} MCP servers...`);
-    const result = await runBenchmark(entries);
-    const summary = formatStateOfMcpReport(result.rows);
-
-    if (opts.json) {
-      console.log(JSON.stringify({ rows: result.rows }, null, 2));
-    } else {
-      console.log(summary);
-    }
-
-    const { mkdir } = await import("node:fs/promises");
-    await mkdir(resolve(opts.out), { recursive: true });
-    await writeFile(resolve(opts.out, "STATE-OF-MCP-2026.md"), summary, "utf8");
-    for (const r of result.reports) {
-      await writeFile(resolve(opts.out, `${r.id}.md`), r.markdown, "utf8");
-    }
-    console.error(`Wrote ${result.reports.length} reports to ${opts.out}/`);
   });
 
 program
@@ -382,4 +406,4 @@ program
     console.log(JSON.stringify(config, null, 2));
   });
 
-program.parse();
+program.parseAsync(process.argv).catch(printCliError);

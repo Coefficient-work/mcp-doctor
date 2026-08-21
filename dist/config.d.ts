@@ -10,4 +10,4 @@ export type McpConfigFile = {
 };
 export declare function loadMcpConfig(path: string): McpConfigFile;
 export declare function resolveMcpConfigPath(explicit?: string): string;
-export declare function getServerEntry(config: McpConfigFile, serverName: string): McpServerEntry;
+export declare function getServerEntry(config: McpConfigFile, serverName: string, configPath?: string): McpServerEntry;

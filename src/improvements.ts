@@ -26,12 +26,44 @@ export function suggestedFixesFromChecks(checks: ScorecardCheck[], tools: ApiToo
       }
     }
 
+    if (check.id === "property-descriptions") {
+      fixes.push({
+        checkId: check.id,
+        problem: check.detail ?? check.message,
+        suggested: "Add a description on every inputSchema.properties field so agents know what to pass.",
+      });
+    }
+
+    if (check.id === "unconstrained-strings") {
+      fixes.push({
+        checkId: check.id,
+        problem: check.detail ?? check.message,
+        suggested: "Constrain string fields with enum, format, or pattern instead of a bare type: string.",
+      });
+    }
+
+    if (check.id === "missing-required") {
+      fixes.push({
+        checkId: check.id,
+        problem: check.detail ?? check.message,
+        suggested: "Declare inputSchema.required for properties the tool cannot run without.",
+      });
+    }
+
+    if (check.id === "output-schema") {
+      fixes.push({
+        checkId: check.id,
+        problem: check.detail ?? check.message,
+        suggested: "Declare outputSchema (or OpenAPI response schema) so agents know the return shape.",
+      });
+    }
+
     if (check.id === "destructive-warnings") {
       fixes.push({
         checkId: check.id,
         problem: "Destructive tool without warning",
         suggested:
-          "Add to description: 'DESTRUCTIVE: irreversible. Requires explicit confirmation.'",
+          "Prefix the description with 'DESTRUCTIVE: irreversible. Requires explicit confirmation.' and add a required confirm boolean parameter.",
       });
     }
 
@@ -39,8 +71,7 @@ export function suggestedFixesFromChecks(checks: ScorecardCheck[], tools: ApiToo
       fixes.push({
         checkId: check.id,
         problem: check.message,
-        suggested:
-          "Group tools by domain with progressive discovery (see `mcp-doctor analyze`). Target <15 tools in initial context.",
+        suggested: "Group tools by domain with progressive discovery. Target <15 tools in initial context.",
       });
     }
 
@@ -52,11 +83,31 @@ export function suggestedFixesFromChecks(checks: ScorecardCheck[], tools: ApiToo
       });
     }
 
+    if (check.id === "credential-in-args") {
+      fixes.push({
+        checkId: check.id,
+        problem: check.detail ?? check.message,
+        suggested:
+          "Do not put secrets in tool arguments. Read API keys from environment variables or server headers instead.",
+      });
+    }
+
     if (check.id === "security-smells" && check.detail) {
+      const liveExec = /command execution surface/.test(check.detail);
       fixes.push({
         checkId: check.id,
         problem: check.detail,
-        suggested: "Move sensitive fields to POST body; never expose credentials on GET tools.",
+        suggested: liveExec
+          ? "Avoid exposing shell/exec/eval surfaces in tool names, descriptions, or schemas."
+          : "Do not put credentials in query parameters; keep secrets on the server.",
+      });
+    }
+
+    if (check.id === "pagination") {
+      fixes.push({
+        checkId: check.id,
+        problem: check.detail ?? check.message,
+        suggested: "Add limit/cursor/offset (or page) parameters to list/search tools.",
       });
     }
   }

@@ -19,6 +19,7 @@ export type LiveInspectResult = {
 };
 
 export function mcpToolToApiTool(tool: Tool): ApiTool {
+  const extra = tool as Tool & { outputSchema?: Record<string, unknown> };
   return {
     name: tool.name,
     description: tool.description ?? "",
@@ -26,6 +27,7 @@ export function mcpToolToApiTool(tool: Tool): ApiTool {
     method: "TOOL",
     path: `/${tool.name}`,
     inputSchema: (tool.inputSchema as Record<string, unknown>) ?? { type: "object", properties: {} },
+    outputSchema: extra.outputSchema,
   };
 }
 
@@ -157,7 +159,7 @@ function formatErr(e: unknown): string {
 
 export function formatInspectReport(live: LiveInspectResult, scorecardMd: string): string {
   const lines = [
-    `# MCP Doctor — live inspection: ${live.serverName}`,
+    `# MCP Doctor - live inspection: ${live.serverName}`,
     "",
     `| Metric | Value |`,
     `|--------|-------|`,
@@ -179,13 +181,13 @@ export function formatInspectReport(live: LiveInspectResult, scorecardMd: string
   if (live.tools.length > 0) {
     lines.push("", "## Tools discovered", "");
     for (const t of live.tools.slice(0, 40)) {
-      lines.push(`- \`${t.name}\` — ${(t.description ?? "").slice(0, 100)}`);
+      lines.push(`- \`${t.name}\` - ${(t.description ?? "").slice(0, 100)}`);
     }
     if (live.tools.length > 40) {
-      lines.push(`- _…and ${live.tools.length - 40} more_`);
+      lines.push(`- _-and ${live.tools.length - 40} more_`);
     }
   } else {
-    lines.push("", "_No tools listed — server may require auth or use a non-standard transport._");
+    lines.push("", "_No tools listed - server may require auth or use a non-standard transport._");
   }
 
   lines.push("", "---", "", scorecardMd);

@@ -1,22 +1,24 @@
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateText, jsonSchema, stepCountIs, tool } from "ai";
 import { callMcpTool, connectMcpSession } from "./mcp-client.js";
 import { computeFriction, formatFrictionReport, formatReplayTimeline, } from "./friction.js";
 export async function runEval(entry, serverName, options) {
-    assertGatewayAuth();
+    assertEvalAuth();
     const session = await connectMcpSession(entry, serverName, options.timeoutMs ?? 45_000);
     const models = options.models ?? [defaultModel()];
     const results = [];
     try {
         for (const model of models) {
-            const gatewayModel = normalizeGatewayModel(model);
-            const provider = modelProviderFor(gatewayModel);
+            const resolved = resolveEvalModel(model);
             try {
-                results.push(await runSingleModelEval(session, gatewayModel, provider, options.task, options.maxSteps ?? 8));
+                results.push(await runSingleModelEval(session, resolved, options.task, options.maxSteps ?? 8));
             }
             catch (e) {
                 results.push({
-                    model: gatewayModel,
-                    provider,
+                    model: resolved.label,
+                    provider: resolved.provider,
                     succeeded: false,
                     friction: computeFriction([], false),
                     events: [],
@@ -30,14 +32,14 @@ export async function runEval(entry, serverName, options) {
     }
     return { serverName, task: options.task, models: results };
 }
-async function runSingleModelEval(session, model, provider, task, maxSteps) {
+async function runSingleModelEval(session, resolved, task, maxSteps) {
     const events = [];
     let stepNum = 0;
     events.push({ step: ++stepNum, type: "assistant", summary: `Task: ${task.slice(0, 120)}` });
     const tools = buildAiTools(session);
     const t0 = Date.now();
     const result = await generateText({
-        model,
+        model: resolved.model,
         tools,
         stopWhen: stepCountIs(maxSteps),
         system: "You complete tasks using MCP tools. Call tools when needed. Be concise. Stop when the task is done and summarize.",
@@ -80,8 +82,8 @@ async function runSingleModelEval(session, model, provider, task, maxSteps) {
         /done|complete|success|here is|result|listed|found|tools?/i.test(finalAnswer ?? "");
     const friction = computeFriction(events, succeeded);
     return {
-        model,
-        provider,
+        model: resolved.label,
+        provider: resolved.provider,
         succeeded,
         friction,
         events,
@@ -130,28 +132,82 @@ function isToolErrorOutput(output) {
         "error" in output &&
         output.error === true);
 }
-function assertGatewayAuth() {
-    if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN)
+export function assertEvalAuth() {
+    if (process.env.AI_GATEWAY_API_KEY ||
+        process.env.VERCEL_OIDC_TOKEN ||
+        process.env.OPENAI_API_KEY ||
+        process.env.ANTHROPIC_API_KEY ||
+        process.env.OLLAMA_HOST) {
         return;
-    throw new Error("AI_GATEWAY_API_KEY required for eval. Get a free key at https://vercel.com/ai-gateway " +
-        "(or run `vercel env pull` for OIDC). Keys stay local � never stored by mcp-doctor.");
+    }
+    throw new Error("eval needs a model key. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY, or OLLAMA_HOST. Keys stay local - never stored by mcp-doctor.");
 }
-function normalizeGatewayModel(model) {
+function stripProviderPrefix(model, prefixes) {
+    for (const prefix of prefixes) {
+        if (model.startsWith(prefix))
+            return model.slice(prefix.length);
+    }
+    return model;
+}
+function resolveEvalModel(raw) {
+    const slug = normalizeModelSlug(raw);
+    if (slug.startsWith("ollama/")) {
+        const id = stripProviderPrefix(slug, ["ollama/"]);
+        const baseURL = process.env.OLLAMA_HOST ?? "http://127.0.0.1:11434/v1";
+        const ollama = createOpenAICompatible({ name: "ollama", baseURL });
+        return { label: slug, provider: "ollama", model: ollama(id) };
+    }
+    if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) {
+        return { label: slug, provider: "gateway", model: slug };
+    }
+    if (slug.startsWith("anthropic/") || slug.startsWith("claude")) {
+        if (!process.env.ANTHROPIC_API_KEY) {
+            throw new Error("ANTHROPIC_API_KEY is not set. Keys stay local - never stored by mcp-doctor.");
+        }
+        const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        return {
+            label: slug,
+            provider: "anthropic",
+            model: anthropic(stripProviderPrefix(slug, ["anthropic/"])),
+        };
+    }
+    if (process.env.OPENAI_API_KEY) {
+        const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        return {
+            label: slug,
+            provider: "openai",
+            model: openai(stripProviderPrefix(slug, ["openai/"])),
+        };
+    }
+    if (process.env.ANTHROPIC_API_KEY) {
+        const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        return {
+            label: slug,
+            provider: "anthropic",
+            model: anthropic(stripProviderPrefix(slug, ["anthropic/"])),
+        };
+    }
+    if (process.env.OLLAMA_HOST) {
+        const ollama = createOpenAICompatible({
+            name: "ollama",
+            baseURL: process.env.OLLAMA_HOST,
+        });
+        return { label: slug, provider: "ollama", model: ollama(stripProviderPrefix(slug, ["ollama/"])) };
+    }
+    throw new Error("eval needs a model key. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY, or OLLAMA_HOST. Keys stay local - never stored by mcp-doctor.");
+}
+function normalizeModelSlug(model) {
     if (model.includes("/"))
         return model;
     if (model.startsWith("claude"))
         return `anthropic/${model}`;
+    if (model.startsWith("llama") || model.startsWith("mistral") || model.startsWith("qwen")) {
+        return `ollama/${model}`;
+    }
     return `openai/${model}`;
 }
 function defaultModel() {
     return "openai/gpt-4o-mini";
-}
-function modelProviderFor(model) {
-    if (model.startsWith("anthropic/"))
-        return "anthropic";
-    if (model.startsWith("openai/"))
-        return "openai";
-    return "gateway";
 }
 export function formatModelMatrix(results) {
     const lines = [
@@ -162,7 +218,7 @@ export function formatModelMatrix(results) {
     ];
     for (const r of results) {
         const ok = r.error ? "error" : r.succeeded ? "pass" : "fail";
-        const tokens = r.usage?.totalTokens ?? "�";
+        const tokens = r.usage?.totalTokens ?? "-";
         lines.push(`| ${r.model} | ${ok} | ${r.friction.score} | ${tokens} |`);
     }
     return lines.join("\n");
@@ -173,7 +229,7 @@ export function formatEvalReport(result) {
         "",
         `**Task:** ${result.task}`,
         "",
-        "_Powered by [Vercel AI SDK](https://ai-sdk.dev) + [AI Gateway](https://vercel.com/ai-gateway)_",
+        "_BYOK eval via the Vercel AI SDK. Keys stay on this machine._",
         "",
         formatModelMatrix(result.models),
         "",

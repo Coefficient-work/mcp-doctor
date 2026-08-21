@@ -38,7 +38,7 @@ export async function buildMcpBundle(doc, outDir, options) {
         "1. Copy the `cursor-mcp.json` snippet into your Cursor MCP settings",
         "   (or merge under `mcpServers`).",
         "2. Restart Cursor.",
-        "3. Ask the agent to list available tools � you should see",
+        "3. Ask the agent to list available tools - you should see",
         `   **${optimized.tools.length} discovery tools** instead of ${baseline.length} flat operations.`,
         "",
         "## One-liner (demo server)",
@@ -47,7 +47,7 @@ export async function buildMcpBundle(doc, outDir, options) {
         "npx @coefficient-work/mcp-doctor@latest serve --demo",
         "```",
         "",
-        "**Demo mode** returns simulated responses � wire your API base URL in a future release.",
+        "**Demo mode** returns simulated responses - wire your API base URL in a future release.",
     ].join("\n"), "utf8");
     return {
         title,

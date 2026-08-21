@@ -21,7 +21,16 @@ async function readSpecRaw(spec) {
         }
         return res.text();
     }
-    return readFile(spec, "utf8");
+    try {
+        return await readFile(spec, "utf8");
+    }
+    catch (err) {
+        const code = err && typeof err === "object" && "code" in err ? String(err.code) : "";
+        if (code === "ENOENT" || code === "EISDIR") {
+            throw new Error(`Not an OpenAPI file: ${spec}. Pass a spec path or URL, or use --demo.`);
+        }
+        throw err;
+    }
 }
 /** Bundled demo fixture shipped with the package. */
 export function demoFixturePath() {

@@ -33,7 +33,7 @@ function formatDemoResponse(tool, args, serverTitle) {
         if (!action) {
             const names = tool.children.map((c) => `- ${c.name}: ${c.description.slice(0, 60)}`).join("\n");
             return [
-                `[mcp-doctor demo] ${tool.name} � progressive discovery for ${tool.tag}`,
+                `[mcp-doctor demo] ${tool.name} - progressive discovery for ${tool.tag}`,
                 "",
                 "Pass `action` to invoke one of:",
                 names,
@@ -50,7 +50,7 @@ function formatDemoResponse(tool, args, serverTitle) {
             `Operation: ${child.name}`,
             `Params: ${JSON.stringify(args.params ?? {}, null, 2)}`,
             "",
-            "This is a free demo server � responses are simulated.",
+            "This is a free demo server - responses are simulated.",
             "Production mode (real HTTP calls) coming soon.",
         ].join("\n");
     }
@@ -59,6 +59,6 @@ function formatDemoResponse(tool, args, serverTitle) {
         `Would call: ${tool.method} ${tool.path}`,
         `Args: ${JSON.stringify(args, null, 2)}`,
         "",
-        "Demo mode � simulated response. Star github.com/coefficient-work/mcp-doctor for updates.",
+        "Demo mode - simulated response. Star github.com/coefficient-work/mcp-doctor for updates.",
     ].join("\n");
 }
