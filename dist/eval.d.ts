@@ -27,6 +27,10 @@ export type EvalResult = {
     models: ModelEvalResult[];
 };
 export declare function runEval(entry: McpServerEntry, serverName: string, options: EvalOptions): Promise<EvalResult>;
+export declare function evalTaskSucceeded(opts: {
+    finishReason?: string;
+    events: ReplayEvent[];
+}): boolean;
 export declare function assertEvalAuth(): void;
 export declare function formatModelMatrix(results: ModelEvalResult[]): string;
 export declare function formatEvalReport(result: EvalResult): string;

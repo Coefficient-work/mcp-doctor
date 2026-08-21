@@ -76,7 +76,7 @@ See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md).
 |---------|-------------|
 | `benchmark` | State of MCP Quality — score catalog servers (writes files only with `--out`) |
 | `list` | MCP servers in `./mcp.json` or `~/.cursor/mcp.json` |
-| `inspect <name>` | Live connect + scorecard + suggested fixes |
+| `inspect <name>` | Live connect + scorecard + suggested fixes (missing `inputSchema` -> Grade F, exit 2) |
 | `eval <name> --task "..."` | BYOK agent eval + friction + replay (OpenAI, Anthropic, Gateway, or Ollama) |
 | `test --demo` | Static scorecard on OpenAPI fixture |
 | `build --demo --out <dir>` | Write optimized MCP tool bundle (requires `--out`) |

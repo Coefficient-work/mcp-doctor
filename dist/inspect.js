@@ -193,7 +193,6 @@ export function formatInspectReport(live, scorecardMd) {
         lines.push("", "_No tools listed - server may require auth or use a non-standard transport._");
     }
     lines.push("", "---", "", scorecardMd);
-    lines.push("", "---", "", "## Feedback (copy to Louis)", "", "```text", `Server: ${live.serverName}`, "Grade: (see scorecard above)", "Would I ship this MCP to customers? yes / no / maybe", "Biggest issue:", "Best surprise:", "Would I pay for CI monitoring on this? yes / no", "```");
     return lines.join("\n");
 }
 export function truncateAtWord(text, max = 100) {

@@ -242,22 +242,6 @@ export function formatInspectReport(live: LiveInspectResult, scorecardMd: string
 
   lines.push("", "---", "", scorecardMd);
 
-  lines.push(
-    "",
-    "---",
-    "",
-    "## Feedback (copy to Louis)",
-    "",
-    "```text",
-    `Server: ${live.serverName}`,
-    "Grade: (see scorecard above)",
-    "Would I ship this MCP to customers? yes / no / maybe",
-    "Biggest issue:",
-    "Best surprise:",
-    "Would I pay for CI monitoring on this? yes / no",
-    "```",
-  );
-
   return lines.join("\n");
 }
 

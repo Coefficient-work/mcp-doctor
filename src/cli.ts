@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { Command } from "commander";
 import { loadEnvLocal } from "./env.js";
 
@@ -65,6 +65,12 @@ function printCliError(err: unknown): never {
   process.exit(1);
 }
 
+async function writeReportFile(path: string, body: string): Promise<void> {
+  const abs = resolve(path);
+  await mkdir(dirname(abs), { recursive: true });
+  await writeFile(abs, body, "utf8");
+}
+
 program
   .command("list")
   .description("List MCP servers from Cursor/Claude config or ./mcp.json")
@@ -125,7 +131,9 @@ program
         }
       }
 
-      console.error(`Connecting to ${serverName}...`);
+      if (!opts.json) {
+        console.error(`Connecting to ${serverName}...`);
+      }
       const live = await inspectLiveMcp(entry, serverName, { timeoutMs: opts.timeout });
       const malformedIndexes = new Set((live.malformedTools ?? []).map((m) => m.index));
       const malformedNames = new Set((live.malformedTools ?? []).map((m) => m.name));
@@ -157,8 +165,10 @@ program
       }
 
       if (opts.out) {
-        await writeFile(resolve(opts.out), report, "utf8");
-        console.error(`\nWrote ${opts.out}`);
+        await writeReportFile(opts.out, report);
+        if (!opts.json) {
+          console.error(`\nWrote ${opts.out}`);
+        }
       }
 
       const missingSchema = scorecard.checks.some(
@@ -212,7 +222,9 @@ program
       const task = opts.task ?? "List all MCP tools and describe what each one does.";
       const models = opts.models?.split(",").map((s) => s.trim()) ?? [opts.model ?? "openai/gpt-4o-mini"];
 
-      console.error(`Evaluating ${serverName} with ${models.join(", ")}...`);
+      if (!opts.json) {
+        console.error(`Evaluating ${serverName} with ${models.join(", ")}...`);
+      }
       const result = await runEval(entry, serverName, { task, models });
       const report = formatEvalReport(result);
 
@@ -220,8 +232,10 @@ program
       else console.log(report);
 
       if (opts.out) {
-        await writeFile(resolve(opts.out), report, "utf8");
-        console.error(`Wrote ${opts.out}`);
+        await writeReportFile(opts.out, report);
+        if (!opts.json) {
+          console.error(`Wrote ${opts.out}`);
+        }
       }
     },
   );
@@ -237,7 +251,9 @@ program
     let entries = loadBenchmarkCatalog(opts.catalog);
     if (opts.limit) entries = entries.slice(0, opts.limit);
 
-    console.error(`Benchmarking ${entries.length} MCP servers...`);
+    if (!opts.json) {
+      console.error(`Benchmarking ${entries.length} MCP servers...`);
+    }
     const result = await runBenchmark(entries);
     const summary = formatStateOfMcpReport(result.rows);
 
@@ -277,8 +293,10 @@ program
     }
 
     if (opts.out) {
-      await writeFile(resolve(opts.out), formatScorecardReport(result), "utf8");
-      console.error(`\nWrote ${opts.out}`);
+      await writeReportFile(opts.out, formatScorecardReport(result));
+      if (!opts.json) {
+        console.error(`\nWrote ${opts.out}`);
+      }
     }
   });
 
@@ -318,8 +336,10 @@ program
     }
 
     if (opts.out) {
-      await writeFile(resolve(opts.out), report, "utf8");
-      console.error(`\nWrote ${opts.out}`);
+      await writeReportFile(opts.out, report);
+      if (!opts.json) {
+        console.error(`\nWrote ${opts.out}`);
+      }
     }
   });
 

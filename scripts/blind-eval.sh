@@ -73,14 +73,28 @@ if [[ "$agent_code" -ne 0 ]]; then
 fi
 
 REPORT="$SANDBOX/REPORT.md"
-if [[ -f "$REPORT" ]]; then
-  if grep -q "100/100" "$REPORT" && grep -Eq "Tools \(live\) \| 0" "$REPORT"; then
-    echo "REGRESSION: REPORT.md has 100/100 with Tools (live) | 0" >&2
+inspect_regression() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  if grep -q "100/100" "$file" && grep -Eq "Tools \(live\) \| 0" "$file"; then
+    echo "REGRESSION: $file has 100/100 with Tools (live) | 0" >&2
     echo "sandbox: $SANDBOX"
     exit 1
   fi
-  if grep -q "Grade F" "$REPORT" && grep -q "No high-priority fixes suggested" "$REPORT"; then
-    echo "REGRESSION: Grade F next to 'No high-priority fixes suggested'" >&2
+  if grep -q "Grade F" "$file" && grep -q "No high-priority fixes suggested" "$file"; then
+    echo "REGRESSION: Grade F next to 'No high-priority fixes suggested' in $file" >&2
+    echo "sandbox: $SANDBOX"
+    exit 1
+  fi
+}
+
+if [[ -f "$REPORT" ]]; then
+  inspect_regression "$SANDBOX/inspect-before.md"
+  inspect_regression "$SANDBOX/reports/inspect-before.md"
+  inspect_regression "$SANDBOX/inspect-after.md"
+  inspect_regression "$SANDBOX/reports/inspect-after.md"
+  if grep -q "100/100" "$REPORT" && grep -Eq "Tools \(live\) \| 0" "$REPORT"; then
+    echo "REGRESSION: REPORT.md has 100/100 with Tools (live) | 0" >&2
     echo "sandbox: $SANDBOX"
     exit 1
   fi

@@ -1,5 +1,6 @@
 import type { ScorecardCheck } from "./scorecard.js";
 import type { ApiTool } from "./openapi.js";
+import { estimateTokens } from "./tokens.js";
 
 export type SuggestedFix = {
   checkId: string;
@@ -22,6 +23,16 @@ export function suggestedFixesFromChecks(checks: ScorecardCheck[], tools: ApiToo
           problem: `Thin description on \`${tool.name}\``,
           current: tool.description || "(empty)",
           suggested: expandDescription(tool),
+        });
+      }
+      const bloated = tools.filter((t) => t.description.trim().length > 400).slice(0, 3);
+      for (const tool of bloated) {
+        const trimmed = trimDescription(tool);
+        fixes.push({
+          checkId: check.id,
+          problem: `Bloated description on \`${tool.name}\``,
+          current: tool.description.slice(0, 180) + "...",
+          suggested: trimmed,
         });
       }
     }
@@ -125,13 +136,28 @@ export function suggestedFixesFromChecks(checks: ScorecardCheck[], tools: ApiToo
   return fixes.slice(0, 12);
 }
 
+function withTokenDelta(current: string, suggested: string): string {
+  const delta = estimateTokens(suggested) - estimateTokens(current);
+  if (delta >= 0) {
+    return `${suggested} This adds ~${delta} tokens vs current.`;
+  }
+  return `${suggested} This saves ~${Math.abs(delta)} tokens vs current.`;
+}
+
 function expandDescription(tool: ApiTool): string {
   const current = tool.description.trim();
   if (!current) {
     return `Write a one-sentence purpose for ${tool.name}: what it returns and which required params the agent must pass.`;
   }
   const sentence = /[.!?]$/.test(current) ? current : `${current}.`;
-  return `${sentence} Say when to choose this tool versus siblings, not just that it performs this operation.`;
+  const suggested = `${sentence} Say when to choose this tool versus siblings, not just that it performs this operation.`;
+  return withTokenDelta(current, suggested);
+}
+
+function trimDescription(tool: ApiTool): string {
+  const sentence = tool.description.replace(/\s+/g, " ").trim().slice(0, 200).replace(/\s+\S*$/, "");
+  const suggested = `${sentence.replace(/[.!?]?$/, ".")} Keep this under 80 characters of purpose plus when to choose the tool.`;
+  return withTokenDelta(tool.description, suggested);
 }
 
 export function formatSuggestedFixes(fixes: SuggestedFix[]): string {
