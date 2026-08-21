@@ -1,15 +1,47 @@
+import { humanizeListToolsError } from "./inspect-errors.js";
 import { operationsFromDoc } from "./openapi.js";
 import { perToolTokens, toolsTokenCount } from "./tokens.js";
 const DESTRUCTIVE_METHODS = new Set(["DELETE", "PUT", "PATCH"]);
-const DESTRUCTIVE_NAME_RE = /delete|remove|destroy|purge|drop|cancel|nuke|flush|wipe|kill|terminate|reset|revoke|truncate/i;
+const DESTRUCTIVE_NAME_RE = /delete|remove|destroy|purg(e|ing|ed)|drop|cancel|nuke|flush|wipe|kill|terminate|reset|revoke|truncate|zeroing|zeroed|\bzero\b|overwrit|prun(e|ing)|reboot/i;
+const DESTRUCTIVE_DESC_STRONG_RE = /purging|zeroing|wiping|destroying|nuking|truncating|irreversible|cannot be undone|wipe(s|d)? all/i;
+const UPDATE_STYLE_NAME_RE = /^(update|configure|set)_/i;
+const DESTRUCTIVE_MARKED_RE = /destructive|danger|irreversible|cannot be undone|permanent|caution/i;
 const LIST_NAME_RE = /^(list|search|find)_|_list$|_search$/i;
-const CREDENTIAL_NAME_RE = /(password|secret|credential|api[_-]?key|(^|_)token$|^token$|pd_token|bearer)/i;
+const SECRET_VALUE_NAME_RE = /^(api[_-]?key|secret_api_key|signing_secret|pd_token|password|passwd|secret|credential)$|(^|_)(api[_-]?key|api[_-]?token|password|passwd|signing_secret)$|(^|_)token$/i;
+const SECRET_REFERENCE_NAME_RE = /(^|_)(ref|pointer)$|(^|_)vault(_|$)|^vault_/i;
+const SECRET_VALUE_DESC_RE = /\bbearer token\b|\bhmac secret\b|\bapi key to pass\b|\bthe (actual )?(api )?key itself\b/i;
 const COMMAND_EXEC_RE = /\bexec\b|\bshell\b|\beval\b|system\(|rm\s+-rf/;
+const IDENTIFIER_OR_QUERY_RE = /^(id|.+_id|sku|uuid|slug|name|query|filter.*|q|search|path|url|uri|host|email|description|text|message|content|prompt|expr|expression)$/i;
+const ENUM_LIKE_NAME_RE = /^(status|type|mode|kind|category|scope|format|provider|channel|report_type|event_type)$/i;
+const DETAIL_LIST_LIMIT = 8;
+export function formatTruncatedList(items, limit = DETAIL_LIST_LIMIT) {
+    if (items.length <= limit)
+        return items.join(", ");
+    return `${items.slice(0, limit).join(", ")} (+${items.length - limit} more)`;
+}
 export function runScorecard(doc, tools = operationsFromDoc(doc), options = {}) {
     const mode = options.mode ?? "openapi";
     const title = doc.info?.title ?? "API";
+    if (options.discoveryFailed) {
+        return {
+            title,
+            score: 0,
+            grade: "F",
+            mode,
+            checks: [{
+                    id: "discovery",
+                    category: "tools",
+                    severity: "fail",
+                    message: "Tool discovery failed - scorecard skipped",
+                    detail: humanizeListToolsError(options.discoveryError ?? "listTools returned no tools"),
+                }],
+            toolCount: 0,
+            tokenCount: 0,
+        };
+    }
     const checks = [];
     checks.push(...checkToolCount(tools, mode));
+    checks.push(...checkMissingInputSchema(tools));
     checks.push(...checkTokenFootprint(tools));
     checks.push(...checkDuplicateNames(tools));
     checks.push(...checkDescriptions(tools));
@@ -25,7 +57,7 @@ export function runScorecard(doc, tools = operationsFromDoc(doc), options = {}) 
     }
     checks.push(...checkCredentialArgs(tools));
     checks.push(...checkSecuritySmells(tools, mode));
-    const score = computeScore(checks);
+    const score = tools.length === 0 ? 0 : computeScore(checks);
     return {
         title,
         score,
@@ -59,6 +91,14 @@ function gradeFromScore(score) {
 }
 function checkToolCount(tools, mode) {
     const n = tools.length;
+    if (n === 0) {
+        return [{
+                id: "tool-count",
+                category: "tools",
+                severity: "fail",
+                message: "0 tools advertised - server exposes no agent-callable surface",
+            }];
+    }
     if (n > 40) {
         return [{
                 id: "tool-count",
@@ -138,7 +178,7 @@ function checkDuplicateNames(tools) {
             category: "tools",
             severity: "warn",
             message: `${ambiguous.length} tool(s) with very short or unclear names`,
-            detail: ambiguous.slice(0, 5).map((t) => t.name).join(", "),
+            detail: formatTruncatedList(ambiguous.map((t) => t.name)),
         });
     }
     return results;
@@ -151,7 +191,7 @@ function checkDescriptions(tools) {
                 category: "docs",
                 severity: "fail",
                 message: `${missing.length}/${tools.length} tool(s) have empty or too-short descriptions`,
-                detail: missing.slice(0, 5).map((t) => t.name).join(", "),
+                detail: formatTruncatedList(missing.map((t) => t.name)),
             }];
     }
     const thin = tools.filter((t) => t.description.trim().length < 30);
@@ -161,7 +201,7 @@ function checkDescriptions(tools) {
                 category: "docs",
                 severity: "warn",
                 message: `${thin.length} tool(s) have thin descriptions (<30 chars)`,
-                detail: thin.slice(0, 5).map((t) => t.name).join(", "),
+                detail: formatTruncatedList(thin.map((t) => t.name)),
             }];
     }
     return [{
@@ -186,7 +226,7 @@ function checkPropertyDescriptions(tools) {
                 category: "docs",
                 severity: "warn",
                 message: `${missing.length} input property(ies) lack a description`,
-                detail: missing.slice(0, 8).join(", "),
+                detail: formatTruncatedList(missing),
             }];
     }
     return [{
@@ -197,20 +237,45 @@ function checkPropertyDescriptions(tools) {
         }];
 }
 function checkUnconstrainedStrings(tools) {
-    const loose = [];
+    const enumLike = [];
+    const remaining = [];
     for (const tool of tools) {
         for (const [name, schema] of Object.entries(schemaProperties(tool.inputSchema))) {
-            if (isUnconstrainedString(schema))
-                loose.push(`${tool.name}.${name}`);
+            if (!isUnconstrainedString(schema))
+                continue;
+            if (IDENTIFIER_OR_QUERY_RE.test(name))
+                continue;
+            const label = `${tool.name}.${name}`;
+            if (ENUM_LIKE_NAME_RE.test(name))
+                enumLike.push(label);
+            else
+                remaining.push(label);
         }
     }
-    if (loose.length > 0) {
+    if (enumLike.length > 0) {
         return [{
                 id: "unconstrained-strings",
                 category: "schema",
                 severity: "warn",
-                message: `${loose.length} string property(ies) have no enum, format, or pattern`,
-                detail: loose.slice(0, 8).join(", "),
+                message: `${enumLike.length} enum-like string(s) have no enum, format, or pattern`,
+                detail: formatTruncatedList(enumLike),
+            }, ...(remaining.length > 0
+                ? [{
+                        id: "unconstrained-strings",
+                        category: "schema",
+                        severity: "info",
+                        message: `${remaining.length} free-form string(s) have no enum, format, or pattern`,
+                        detail: formatTruncatedList(remaining),
+                    }]
+                : [])];
+    }
+    if (remaining.length > 0) {
+        return [{
+                id: "unconstrained-strings",
+                category: "schema",
+                severity: "info",
+                message: `${remaining.length} free-form string(s) have no enum, format, or pattern`,
+                detail: formatTruncatedList(remaining),
             }];
     }
     return [{
@@ -220,13 +285,25 @@ function checkUnconstrainedStrings(tools) {
             message: "String inputs are constrained (enum, format, or pattern)",
         }];
 }
+function checkMissingInputSchema(tools) {
+    const missing = tools.filter((t) => t.missingInputSchema);
+    if (missing.length === 0)
+        return [];
+    return [{
+            id: "missing-input-schema",
+            category: "schema",
+            severity: "fail",
+            message: `${missing.length} tool(s) omitted required inputSchema`,
+            detail: formatTruncatedList(missing.map((t) => t.name)),
+        }];
+}
 function checkMissingRequired(tools) {
     const missing = tools.filter((t) => {
         const props = schemaProperties(t.inputSchema);
         if (Object.keys(props).length === 0)
             return false;
         const required = t.inputSchema.required;
-        return !Array.isArray(required) || required.length === 0;
+        return !Array.isArray(required);
     });
     if (missing.length > 0) {
         return [{
@@ -234,7 +311,7 @@ function checkMissingRequired(tools) {
                 category: "schema",
                 severity: "warn",
                 message: `${missing.length} tool(s) have input properties but no required array`,
-                detail: missing.slice(0, 5).map((t) => t.name).join(", "),
+                detail: formatTruncatedList(missing.map((t) => t.name)),
             }];
     }
     return [{
@@ -257,25 +334,32 @@ function checkOutputSchema(tools, mode) {
     return [{
             id: "output-schema",
             category: "schema",
-            severity: "warn",
+            severity: mode === "live" ? "info" : "warn",
             message: mode === "live"
-                ? `${missing.length} tool(s) lack an output schema`
+                ? `${missing.length} tool(s) lack an output schema (optional on live MCP)`
                 : `${missing.length} operation(s) lack a response schema`,
-            detail: missing.slice(0, 5).map((t) => t.name).join(", "),
+            detail: formatTruncatedList(missing.map((t) => t.name)),
         }];
 }
+function isDestructiveTool(tool) {
+    if (DESTRUCTIVE_METHODS.has(tool.method) || DESTRUCTIVE_NAME_RE.test(tool.name)) {
+        return true;
+    }
+    if (UPDATE_STYLE_NAME_RE.test(tool.name)) {
+        return DESTRUCTIVE_DESC_STRONG_RE.test(tool.description);
+    }
+    return DESTRUCTIVE_DESC_STRONG_RE.test(tool.description);
+}
 function checkDestructiveTools(tools) {
-    const destructive = tools.filter((t) => DESTRUCTIVE_METHODS.has(t.method) ||
-        DESTRUCTIVE_NAME_RE.test(t.name) ||
-        DESTRUCTIVE_NAME_RE.test(t.description));
-    const unmarked = destructive.filter((t) => !/destructive|danger|irreversible|cannot be undone|permanent/i.test(t.description));
+    const destructive = tools.filter(isDestructiveTool);
+    const unmarked = destructive.filter((t) => !DESTRUCTIVE_MARKED_RE.test(t.description));
     if (unmarked.length > 0) {
         return [{
                 id: "destructive-warnings",
                 category: "safety",
                 severity: "warn",
                 message: `${unmarked.length} destructive tool(s) without explicit warnings in description`,
-                detail: unmarked.slice(0, 5).map((t) => t.name).join(", "),
+                detail: formatTruncatedList(unmarked.map((t) => t.name)),
             }];
     }
     if (destructive.length > 0) {
@@ -344,7 +428,7 @@ function checkPagination(tools) {
                 category: "schema",
                 severity: "warn",
                 message: `${lacking.length} list/search tool(s) may lack pagination parameters`,
-                detail: lacking.slice(0, 5).map((t) => t.name).join(", "),
+                detail: formatTruncatedList(lacking.map((t) => t.name)),
             }];
     }
     return [{
@@ -393,12 +477,22 @@ function checkAuthClarity(doc) {
             message: `Auth schemes documented (${Object.keys(securitySchemes).join(", ")})`,
         }];
 }
+export function argumentLooksLikeSecret(name, description = "") {
+    if (SECRET_REFERENCE_NAME_RE.test(name)) {
+        return SECRET_VALUE_DESC_RE.test(description);
+    }
+    if (SECRET_VALUE_NAME_RE.test(name))
+        return true;
+    if (/secret_api_key/i.test(name))
+        return true;
+    return false;
+}
 function checkCredentialArgs(tools) {
     const leaks = [];
     for (const tool of tools) {
         for (const [name, schema] of Object.entries(schemaProperties(tool.inputSchema))) {
             const desc = typeof schema.description === "string" ? schema.description : "";
-            if (CREDENTIAL_NAME_RE.test(name) || CREDENTIAL_NAME_RE.test(desc)) {
+            if (argumentLooksLikeSecret(name, desc)) {
                 leaks.push(`${tool.name}.${name}`);
             }
         }
@@ -409,7 +503,7 @@ function checkCredentialArgs(tools) {
                 category: "auth",
                 severity: "fail",
                 message: `${leaks.length} tool argument(s) look like secrets in the LLM-visible schema`,
-                detail: leaks.slice(0, 8).join(", "),
+                detail: formatTruncatedList(leaks),
             }];
     }
     return [{
@@ -423,8 +517,14 @@ function checkSecuritySmells(tools, mode) {
     const smells = [];
     for (const tool of tools) {
         const blob = JSON.stringify(tool).toLowerCase();
-        if (mode === "openapi" && CREDENTIAL_NAME_RE.test(blob) && tool.method === "GET") {
-            smells.push(`${tool.name}: sensitive field on GET`);
+        if (mode === "openapi" && tool.method === "GET") {
+            for (const [name, schema] of Object.entries(schemaProperties(tool.inputSchema))) {
+                const desc = typeof schema.description === "string" ? schema.description : "";
+                if (argumentLooksLikeSecret(name, desc)) {
+                    smells.push(`${tool.name}: sensitive field on GET`);
+                    break;
+                }
+            }
         }
         if (COMMAND_EXEC_RE.test(blob)) {
             smells.push(`${tool.name}: possible command execution surface`);
@@ -436,7 +536,7 @@ function checkSecuritySmells(tools, mode) {
                 category: "safety",
                 severity: "fail",
                 message: `${smells.length} potential security smell(s)`,
-                detail: smells.slice(0, 5).join("; "),
+                detail: formatTruncatedList(smells),
             }];
     }
     return [{

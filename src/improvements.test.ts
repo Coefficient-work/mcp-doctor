@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { suggestedFixesFromChecks } from "./improvements.js";
+import { suggestedFixesFromChecks, formatSuggestedFixes } from "./improvements.js";
 import type { ScorecardCheck } from "./scorecard.js";
 import type { ApiTool } from "./openapi.js";
 
@@ -38,5 +38,39 @@ describe("suggestedFixesFromChecks", () => {
     }];
     const fixes = suggestedFixesFromChecks(checks, []);
     assert.match(fixes[0]?.suggested ?? "", /"type": "object"/);
+  });
+
+  it("does not glue Say when onto the current sentence without punctuation", () => {
+    const tool: ApiTool = {
+      ...thinTool,
+      name: "reboot_canary",
+      description: "reboots the canary instance",
+    };
+    const checks: ScorecardCheck[] = [{
+      id: "descriptions",
+      category: "docs",
+      severity: "warn",
+      message: "1 tool(s) have thin descriptions (<30 chars)",
+      detail: "reboot_canary",
+    }];
+    const suggested = suggestedFixesFromChecks(checks, [tool]).map((f) => f.suggested).join("\n");
+    assert.equal(/instance Say when/.test(suggested), false);
+    assert.match(suggested, /instance\.\s+Say when/);
+  });
+
+  it("suggests inputSchema when discovery fails", () => {
+    const checks: ScorecardCheck[] = [{
+      id: "discovery",
+      category: "tools",
+      severity: "fail",
+      message: "Tool discovery failed - scorecard skipped",
+      detail: "Tool #6 is missing required inputSchema (expected object, got undefined). Server may still be reachable.",
+    }];
+    const fixes = suggestedFixesFromChecks(checks, []);
+    assert.ok(fixes.length > 0);
+    assert.match(fixes[0]?.suggested ?? "", /inputSchema/);
+    const md = formatSuggestedFixes(fixes);
+    assert.equal(md.includes("No high-priority fixes suggested"), false);
+    assert.match(md, /inputSchema/);
   });
 });

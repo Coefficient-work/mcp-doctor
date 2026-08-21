@@ -14,7 +14,7 @@ function liveTool(partial) {
         description: partial.description,
         inputSchema: (partial.inputSchema ?? { type: "object", properties: {} }),
         ...(partial.outputSchema ? { outputSchema: partial.outputSchema } : {}),
-    });
+    }, { missingInputSchema: partial.missingInputSchema });
 }
 describe("runScorecard", () => {
     it("flags bloated demo API with warnings or failures", () => {
@@ -164,5 +164,217 @@ describe("PulseOps-shaped live scorecard", () => {
         ], { mode: "live" });
         assert.equal(result.checks.some((c) => c.id === "auth-clarity"), false);
         assert.equal(formatScorecardReport(result).includes("security schemes"), false);
+    });
+});
+describe("CloudShelf 0.4.3 scorecard", () => {
+    it("scores discovery failure as 0 / F, not Grade A", () => {
+        const result = runScorecard({ info: { title: "cloudshelf-mcp" } }, [], {
+            mode: "live",
+            discoveryFailed: true,
+            discoveryError: 'listTools: Invalid input: expected object, received undefined at tools.6.inputSchema',
+        });
+        assert.equal(result.score, 0);
+        assert.equal(result.grade, "F");
+        assert.equal(result.toolCount, 0);
+        const discovery = result.checks.find((c) => c.id === "discovery");
+        assert.equal(discovery?.severity, "fail");
+        assert.match(discovery?.detail ?? "", /inputSchema/);
+        assert.match(discovery?.detail ?? "", /Tool #6/);
+        assert.equal(/Invalid input: expected object/.test(discovery?.detail ?? ""), false);
+        assert.equal(result.checks.some((c) => c.severity === "pass"), false);
+    });
+    it("fails 0 tools without discovery errors instead of awarding a pass", () => {
+        const result = runScorecard({ info: { title: "empty" } }, [], { mode: "live" });
+        assert.equal(result.score, 0);
+        assert.equal(result.grade, "F");
+        const count = result.checks.find((c) => c.id === "tool-count");
+        assert.equal(count?.severity, "fail");
+        assert.match(count?.message ?? "", /0 tools advertised/);
+    });
+    it("flags CloudShelf purging/zeroing description as destructive until CAUTION prefix", () => {
+        const unmarked = liveTool({
+            name: "recalibrate_warehouse_bins",
+            description: "Recalibrates all bin coordinate partitions, purging orphaned allocations and zeroing all untracked physical bin items immediately.",
+        });
+        const unmarkedResult = runScorecard({ info: { title: "cloudshelf" } }, [unmarked], { mode: "live" });
+        const unmarkedCheck = unmarkedResult.checks.find((c) => c.id === "destructive-warnings");
+        assert.equal(unmarkedCheck?.severity, "warn");
+        assert.match(unmarkedCheck?.detail ?? "", /recalibrate_warehouse_bins/);
+        const marked = liveTool({
+            name: "recalibrate_warehouse_bins",
+            description: "CAUTION / DESTRUCTIVE: Recalibrate coordinate partitions in a warehouse zone, purging orphaned allocations and resetting untracked physical bins.",
+        });
+        const markedResult = runScorecard({ info: { title: "cloudshelf" } }, [marked], { mode: "live" });
+        const markedCheck = markedResult.checks.find((c) => c.id === "destructive-warnings");
+        assert.equal(markedCheck?.severity, "pass");
+    });
+    it("treats live missing outputSchema as info, not a score warning", () => {
+        const result = runScorecard({ info: { title: "cloudshelf" } }, [
+            liveTool({
+                name: "get_sku_inventory",
+                description: "Retrieve real-time stock levels, allocated units, and bin location breakdown for a given SKU.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        sku: { type: "string", description: "SKU", pattern: "^SKU-" },
+                    },
+                    required: ["sku"],
+                },
+            }),
+        ], { mode: "live" });
+        const check = result.checks.find((c) => c.id === "output-schema");
+        assert.equal(check?.severity, "info");
+    });
+    it("does not warn unconstrained identifier or query strings; warns enum-like names", () => {
+        const result = runScorecard({ info: { title: "cloudshelf" } }, [
+            liveTool({
+                name: "query_raw_audit_log",
+                description: "Query warehouse compliance logs and fulfillment telemetry records by tenant and filters.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        tenant_id: { type: "string", description: "Tenant UUID" },
+                        sku: { type: "string", description: "SKU" },
+                        zone: { type: "string", description: "Warehouse zone" },
+                        category: { type: "string", description: "Product category" },
+                    },
+                    required: ["tenant_id"],
+                },
+            }),
+        ], { mode: "live" });
+        const unconstrained = result.checks.filter((c) => c.id === "unconstrained-strings");
+        const warn = unconstrained.find((c) => c.severity === "warn");
+        const info = unconstrained.find((c) => c.severity === "info");
+        assert.equal(warn?.severity, "warn");
+        assert.match(warn?.detail ?? "", /category/);
+        assert.equal((warn?.detail ?? "").includes("sku"), false);
+        assert.equal((warn?.detail ?? "").includes("tenant_id"), false);
+        assert.ok(info);
+        assert.match(info?.detail ?? "", /zone/);
+    });
+    it("shows +N more when more than 8 tools lack output schema", () => {
+        const tools = Array.from({ length: 10 }, (_, i) => liveTool({
+            name: `tool_${i}`,
+            description: "A reasonably long tool description for agent readiness checks here.",
+        }));
+        const result = runScorecard({ info: { title: "cloudshelf" } }, tools, { mode: "live" });
+        const check = result.checks.find((c) => c.id === "output-schema");
+        assert.match(check?.detail ?? "", /\(\+2 more\)/);
+    });
+});
+describe("BeaconHub 0.4.4 scorecard", () => {
+    it("treats required: [] on a list tool as missing-required pass", () => {
+        const result = runScorecard({ info: { title: "beaconhub" } }, [
+            liveTool({
+                name: "list_deployments",
+                description: "List deployments with optional environment and status filters for operators.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        environment: { type: "string", description: "Environment name", enum: ["prod", "stage"] },
+                        status: { type: "string", description: "Rollout status", enum: ["live", "failed"] },
+                    },
+                    required: [],
+                },
+            }),
+        ], { mode: "live" });
+        const check = result.checks.find((c) => c.id === "missing-required");
+        assert.equal(check?.severity, "pass");
+    });
+    it("warns when required is missing entirely on a tool with properties", () => {
+        const result = runScorecard({ info: { title: "beaconhub" } }, [
+            liveTool({
+                name: "list_deployments",
+                description: "List deployments with optional environment and status filters for operators.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        environment: { type: "string", description: "Environment name", enum: ["prod", "stage"] },
+                    },
+                },
+            }),
+        ], { mode: "live" });
+        const check = result.checks.find((c) => c.id === "missing-required");
+        assert.equal(check?.severity, "warn");
+        assert.match(check?.detail ?? "", /list_deployments/);
+    });
+    it("fails secret_api_key but not vault_pointer or credential_secret_ref", () => {
+        const result = runScorecard({ info: { title: "beaconhub" } }, [
+            liveTool({
+                name: "rotate_signing_material",
+                description: "Rotate signing material for a deployment using vault references, not raw secrets.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        secret_api_key: { type: "string", description: "The API key itself" },
+                        vault_pointer: { type: "string", description: "Path to the secret in vault" },
+                        credential_secret_ref: { type: "string", description: "Env var name holding the credential" },
+                    },
+                    required: ["secret_api_key"],
+                },
+            }),
+        ], { mode: "live" });
+        const check = result.checks.find((c) => c.id === "credential-in-args");
+        assert.equal(check?.severity, "fail");
+        assert.match(check?.detail ?? "", /secret_api_key/);
+        assert.equal((check?.detail ?? "").includes("vault_pointer"), false);
+        assert.equal((check?.detail ?? "").includes("credential_secret_ref"), false);
+    });
+    it("flags a secret reference when the description says it is a bearer token", () => {
+        const result = runScorecard({ info: { title: "beaconhub" } }, [
+            liveTool({
+                name: "call_upstream",
+                description: "Call an upstream API using a referenced credential for authentication.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        vault_pointer: { type: "string", description: "Bearer token for the upstream API" },
+                    },
+                    required: ["vault_pointer"],
+                },
+            }),
+        ], { mode: "live" });
+        const check = result.checks.find((c) => c.id === "credential-in-args");
+        assert.equal(check?.severity, "fail");
+        assert.match(check?.detail ?? "", /vault_pointer/);
+    });
+    it("does not flag update_routing_policy just because the description says remove", () => {
+        const result = runScorecard({ info: { title: "beaconhub" } }, [
+            liveTool({
+                name: "update_routing_policy",
+                description: "Update traffic routing policy for a service, including weights used to remove failed backends from rotation.",
+            }),
+        ], { mode: "live" });
+        const check = result.checks.find((c) => c.id === "destructive-warnings");
+        assert.notEqual(check?.severity, "warn");
+    });
+    it("flags prune_stale_caches purging/zeroing until a CAUTION prefix", () => {
+        const unmarked = liveTool({
+            name: "prune_stale_caches",
+            description: "Purging and zeroing stale edge caches for the selected service immediately.",
+        });
+        const unmarkedResult = runScorecard({ info: { title: "beaconhub" } }, [unmarked], { mode: "live" });
+        const unmarkedCheck = unmarkedResult.checks.find((c) => c.id === "destructive-warnings");
+        assert.equal(unmarkedCheck?.severity, "warn");
+        assert.match(unmarkedCheck?.detail ?? "", /prune_stale_caches/);
+        const marked = liveTool({
+            name: "prune_stale_caches",
+            description: "CAUTION / DESTRUCTIVE: Purging and zeroing stale edge caches for the selected service immediately.",
+        });
+        const markedResult = runScorecard({ info: { title: "beaconhub" } }, [marked], { mode: "live" });
+        const markedCheck = markedResult.checks.find((c) => c.id === "destructive-warnings");
+        assert.equal(markedCheck?.severity, "pass");
+    });
+    it("fails a recovered tool that omitted inputSchema", () => {
+        const result = runScorecard({ info: { title: "beaconhub" } }, [
+            liveTool({
+                name: "reboot_canary",
+                description: "Reboots the canary instance after a failed health check window.",
+                missingInputSchema: true,
+            }),
+        ], { mode: "live" });
+        const check = result.checks.find((c) => c.id === "missing-input-schema");
+        assert.equal(check?.severity, "fail");
+        assert.match(check?.detail ?? "", /reboot_canary/);
     });
 });

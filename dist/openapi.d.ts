@@ -28,6 +28,8 @@ export type ApiTool = {
     path: string;
     inputSchema: Record<string, unknown>;
     outputSchema?: Record<string, unknown>;
+    /** True when listTools omitted inputSchema and we filled an empty object. */
+    missingInputSchema?: boolean;
     /** Original operations when using group-by-tag discovery. */
     children?: ApiTool[];
 };

@@ -1,3 +1,4 @@
+import { humanizeListToolsError } from "./inspect-errors.js";
 import type { OpenApiDocument } from "./openapi.js";
 import type { ApiTool } from "./openapi.js";
 import { operationsFromDoc } from "./openapi.js";
@@ -32,11 +33,17 @@ export type ScorecardOptions = {
 
 const DESTRUCTIVE_METHODS = new Set(["DELETE", "PUT", "PATCH"]);
 const DESTRUCTIVE_NAME_RE =
-  /delete|remove|destroy|purg(e|ing|ed)|drop|cancel|nuke|flush|wipe|kill|terminate|reset|revoke|truncate|zeroing|zeroed|\bzero\b|overwrit|prun(e|ing)/i;
+  /delete|remove|destroy|purg(e|ing|ed)|drop|cancel|nuke|flush|wipe|kill|terminate|reset|revoke|truncate|zeroing|zeroed|\bzero\b|overwrit|prun(e|ing)|reboot/i;
+const DESTRUCTIVE_DESC_STRONG_RE =
+  /purging|zeroing|wiping|destroying|nuking|truncating|irreversible|cannot be undone|wipe(s|d)? all/i;
+const UPDATE_STYLE_NAME_RE = /^(update|configure|set)_/i;
 const DESTRUCTIVE_MARKED_RE = /destructive|danger|irreversible|cannot be undone|permanent|caution/i;
 const LIST_NAME_RE = /^(list|search|find)_|_list$|_search$/i;
-const CREDENTIAL_NAME_RE =
-  /(password|secret|credential|api[_-]?key|(^|_)token$|^token$|pd_token|bearer)/i;
+const SECRET_VALUE_NAME_RE =
+  /^(api[_-]?key|secret_api_key|signing_secret|pd_token|password|passwd|secret|credential)$|(^|_)(api[_-]?key|api[_-]?token|password|passwd|signing_secret)$|(^|_)token$/i;
+const SECRET_REFERENCE_NAME_RE = /(^|_)(ref|pointer)$|(^|_)vault(_|$)|^vault_/i;
+const SECRET_VALUE_DESC_RE =
+  /\bbearer token\b|\bhmac secret\b|\bapi key to pass\b|\bthe (actual )?(api )?key itself\b/i;
 const COMMAND_EXEC_RE = /\bexec\b|\bshell\b|\beval\b|system\(|rm\s+-rf/;
 const IDENTIFIER_OR_QUERY_RE =
   /^(id|.+_id|sku|uuid|slug|name|query|filter.*|q|search|path|url|uri|host|email|description|text|message|content|prompt|expr|expression)$/i;
@@ -67,7 +74,7 @@ export function runScorecard(
         category: "tools",
         severity: "fail",
         message: "Tool discovery failed - scorecard skipped",
-        detail: options.discoveryError ?? "listTools returned no tools",
+        detail: humanizeListToolsError(options.discoveryError ?? "listTools returned no tools"),
       }],
       toolCount: 0,
       tokenCount: 0,
@@ -77,6 +84,7 @@ export function runScorecard(
   const checks: ScorecardCheck[] = [];
 
   checks.push(...checkToolCount(tools, mode));
+  checks.push(...checkMissingInputSchema(tools));
   checks.push(...checkTokenFootprint(tools));
   checks.push(...checkDuplicateNames(tools));
   checks.push(...checkDescriptions(tools));
@@ -322,12 +330,24 @@ function checkUnconstrainedStrings(tools: ApiTool[]): ScorecardCheck[] {
   }];
 }
 
+function checkMissingInputSchema(tools: ApiTool[]): ScorecardCheck[] {
+  const missing = tools.filter((t) => t.missingInputSchema);
+  if (missing.length === 0) return [];
+  return [{
+    id: "missing-input-schema",
+    category: "schema",
+    severity: "fail",
+    message: `${missing.length} tool(s) omitted required inputSchema`,
+    detail: formatTruncatedList(missing.map((t) => t.name)),
+  }];
+}
+
 function checkMissingRequired(tools: ApiTool[]): ScorecardCheck[] {
   const missing = tools.filter((t) => {
     const props = schemaProperties(t.inputSchema);
     if (Object.keys(props).length === 0) return false;
     const required = t.inputSchema.required;
-    return !Array.isArray(required) || required.length === 0;
+    return !Array.isArray(required);
   });
   if (missing.length > 0) {
     return [{
@@ -368,13 +388,18 @@ function checkOutputSchema(tools: ApiTool[], mode: ScorecardMode): ScorecardChec
   }];
 }
 
+function isDestructiveTool(tool: ApiTool): boolean {
+  if (DESTRUCTIVE_METHODS.has(tool.method) || DESTRUCTIVE_NAME_RE.test(tool.name)) {
+    return true;
+  }
+  if (UPDATE_STYLE_NAME_RE.test(tool.name)) {
+    return DESTRUCTIVE_DESC_STRONG_RE.test(tool.description);
+  }
+  return DESTRUCTIVE_DESC_STRONG_RE.test(tool.description);
+}
+
 function checkDestructiveTools(tools: ApiTool[]): ScorecardCheck[] {
-  const destructive = tools.filter(
-    (t) =>
-      DESTRUCTIVE_METHODS.has(t.method) ||
-      DESTRUCTIVE_NAME_RE.test(t.name) ||
-      DESTRUCTIVE_NAME_RE.test(t.description),
-  );
+  const destructive = tools.filter(isDestructiveTool);
   const unmarked = destructive.filter((t) => !DESTRUCTIVE_MARKED_RE.test(t.description));
 
   if (unmarked.length > 0) {
@@ -513,12 +538,21 @@ function checkAuthClarity(doc: OpenApiDocument): ScorecardCheck[] {
   }];
 }
 
+export function argumentLooksLikeSecret(name: string, description = ""): boolean {
+  if (SECRET_REFERENCE_NAME_RE.test(name)) {
+    return SECRET_VALUE_DESC_RE.test(description);
+  }
+  if (SECRET_VALUE_NAME_RE.test(name)) return true;
+  if (/secret_api_key/i.test(name)) return true;
+  return false;
+}
+
 function checkCredentialArgs(tools: ApiTool[]): ScorecardCheck[] {
   const leaks: string[] = [];
   for (const tool of tools) {
     for (const [name, schema] of Object.entries(schemaProperties(tool.inputSchema))) {
       const desc = typeof schema.description === "string" ? schema.description : "";
-      if (CREDENTIAL_NAME_RE.test(name) || CREDENTIAL_NAME_RE.test(desc)) {
+      if (argumentLooksLikeSecret(name, desc)) {
         leaks.push(`${tool.name}.${name}`);
       }
     }
@@ -544,8 +578,14 @@ function checkSecuritySmells(tools: ApiTool[], mode: ScorecardMode): ScorecardCh
   const smells: string[] = [];
   for (const tool of tools) {
     const blob = JSON.stringify(tool).toLowerCase();
-    if (mode === "openapi" && CREDENTIAL_NAME_RE.test(blob) && tool.method === "GET") {
-      smells.push(`${tool.name}: sensitive field on GET`);
+    if (mode === "openapi" && tool.method === "GET") {
+      for (const [name, schema] of Object.entries(schemaProperties(tool.inputSchema))) {
+        const desc = typeof schema.description === "string" ? schema.description : "";
+        if (argumentLooksLikeSecret(name, desc)) {
+          smells.push(`${tool.name}: sensitive field on GET`);
+          break;
+        }
+      }
     }
     if (COMMAND_EXEC_RE.test(blob)) {
       smells.push(`${tool.name}: possible command execution surface`);

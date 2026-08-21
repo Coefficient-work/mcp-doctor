@@ -4,6 +4,7 @@ import { defaultOptimize } from "./optimize.js";
 import { operationsFromDoc } from "./openapi.js";
 import { cursorMcpConfig, toMcpTools } from "./mcp.js";
 import { toolsTokenCount } from "./tokens.js";
+import { packageVersion } from "./pkg.js";
 export async function buildMcpBundle(doc, outDir, options) {
     const title = doc.info?.title ?? "api";
     const baseline = operationsFromDoc(doc);
@@ -44,7 +45,7 @@ export async function buildMcpBundle(doc, outDir, options) {
         "## One-liner (demo server)",
         "",
         "```bash",
-        "npx @coefficient-work/mcp-doctor@latest serve --demo",
+        `npx @coefficient-work/mcp-doctor@${packageVersion()} serve --demo`,
         "```",
         "",
         "**Demo mode** returns simulated responses - wire your API base URL in a future release.",

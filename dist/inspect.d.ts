@@ -14,9 +14,16 @@ export type LiveInspectResult = {
     promptCount: number;
     latencyMs: number;
     errors: string[];
+    malformedTools?: Array<{
+        index: number;
+        name: string;
+    }>;
 };
-export declare function mcpToolToApiTool(tool: Tool): ApiTool;
+export declare function mcpToolToApiTool(tool: Tool, extra?: {
+    missingInputSchema?: boolean;
+}): ApiTool;
 export declare function inspectLiveMcp(entry: McpServerEntry, serverName: string, options?: {
     timeoutMs?: number;
 }): Promise<LiveInspectResult>;
 export declare function formatInspectReport(live: LiveInspectResult, scorecardMd: string): string;
+export declare function truncateAtWord(text: string, max?: number): string;

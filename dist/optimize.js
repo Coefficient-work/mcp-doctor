@@ -44,7 +44,7 @@ function trimDescriptions(tools, maxChars) {
     return tools.map((tool) => ({
         ...tool,
         description: tool.description.length > maxChars
-            ? `${tool.description.slice(0, maxChars - 1)}-`
+            ? `${tool.description.slice(0, Math.max(0, maxChars - 3))}...`
             : tool.description,
     }));
 }
@@ -95,7 +95,7 @@ function stripSchemaNoise(schema) {
                 delete v.example;
                 delete v.examples;
                 if (typeof v.description === "string" && v.description.length > 60) {
-                    v.description = `${v.description.slice(0, 59)}-`;
+                    v.description = `${v.description.slice(0, 57)}...`;
                 }
                 props[key] = v;
             }

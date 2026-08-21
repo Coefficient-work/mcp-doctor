@@ -28,6 +28,4 @@ export declare function publicRegistry(registry: CompetitorRegistry): {
         competitors: PublicCompetitor[];
     }>;
 };
-export declare function formatCompetitorReport(registry: CompetitorRegistry, categoryFilter?: string, options?: {
-    internal?: boolean;
-}): string;
+export declare function formatCompetitorReport(registry: CompetitorRegistry, categoryFilter?: string): string;

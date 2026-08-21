@@ -4,6 +4,11 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServerEntry } from "./config.js";
+import {
+  coerceListedTools,
+  humanizeListToolsError,
+  lenientListToolsResultSchema,
+} from "./inspect-errors.js";
 import type { ApiTool } from "./openapi.js";
 import { packageVersion } from "./pkg.js";
 
@@ -17,10 +22,18 @@ export type LiveInspectResult = {
   promptCount: number;
   latencyMs: number;
   errors: string[];
+  malformedTools?: Array<{ index: number; name: string }>;
 };
 
-export function mcpToolToApiTool(tool: Tool): ApiTool {
-  const extra = tool as Tool & { outputSchema?: Record<string, unknown> };
+export function mcpToolToApiTool(
+  tool: Tool,
+  extra?: { missingInputSchema?: boolean },
+): ApiTool {
+  const payload = tool as Tool & { outputSchema?: Record<string, unknown> };
+  const schemaMissing =
+    extra?.missingInputSchema === true ||
+    tool.inputSchema == null ||
+    typeof tool.inputSchema !== "object";
   return {
     name: tool.name,
     description: tool.description ?? "",
@@ -28,7 +41,8 @@ export function mcpToolToApiTool(tool: Tool): ApiTool {
     method: "TOOL",
     path: `/${tool.name}`,
     inputSchema: (tool.inputSchema as Record<string, unknown>) ?? { type: "object", properties: {} },
-    outputSchema: extra.outputSchema,
+    outputSchema: payload.outputSchema,
+    ...(schemaMissing ? { missingInputSchema: true } : {}),
   };
 }
 
@@ -62,6 +76,7 @@ export async function inspectLiveMcp(
   }
 
   let tools: Tool[] = [];
+  let malformedTools: Array<{ index: number; name: string }> = [];
   let resourceCount = 0;
   let promptCount = 0;
   let serverInfo: { name: string; version: string } | undefined;
@@ -77,7 +92,31 @@ export async function inspectLiveMcp(
     const listed = await withTimeout(client.listTools(), timeoutMs, "listTools");
     tools = listed.tools ?? [];
   } catch (e) {
-    errors.push(`listTools: ${formatErr(e)}`);
+    const raw = formatErr(e);
+    try {
+      const listed = await withTimeout(
+        client.request({ method: "tools/list" }, lenientListToolsResultSchema as never),
+        timeoutMs,
+        "listTools",
+      );
+      const coerced = coerceListedTools((listed as { tools?: unknown[] }).tools ?? []);
+      tools = coerced.tools as Tool[];
+      malformedTools = coerced.malformed;
+      if (coerced.malformed.length > 0) {
+        for (const m of coerced.malformed) {
+          errors.push(
+            humanizeListToolsError(
+              `expected object, received undefined at tools.${m.index}.inputSchema`,
+              coerced.tools,
+            ),
+          );
+        }
+      } else {
+        errors.push(humanizeListToolsError(raw, coerced.tools));
+      }
+    } catch {
+      errors.push(humanizeListToolsError(raw, tools));
+    }
   }
 
   try {
@@ -110,6 +149,7 @@ export async function inspectLiveMcp(
     promptCount,
     latencyMs: Date.now() - start,
     errors,
+    malformedTools,
   };
 }
 
@@ -155,7 +195,11 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): P
 }
 
 function formatErr(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
+  if (e instanceof Error) return e.message;
+  if (typeof e === "object" && e && "message" in e && typeof (e as { message: unknown }).message === "string") {
+    return (e as { message: string }).message;
+  }
+  return String(e);
 }
 
 export function formatInspectReport(live: LiveInspectResult, scorecardMd: string): string {
@@ -187,6 +231,11 @@ export function formatInspectReport(live: LiveInspectResult, scorecardMd: string
     if (live.tools.length > 40) {
       lines.push(`- _-and ${live.tools.length - 40} more_`);
     }
+  } else if (live.errors.some((err) => /inputSchema/i.test(err))) {
+    lines.push(
+      "",
+      "_Tool discovery failed because at least one tool is missing inputSchema. Other tools were not listed._",
+    );
   } else {
     lines.push("", "_No tools listed - server may require auth or use a non-standard transport._");
   }
