@@ -161,7 +161,10 @@ program
         console.error(`\nWrote ${opts.out}`);
       }
 
-      if (discoveryFailed) {
+      const missingSchema = scorecard.checks.some(
+        (c) => c.id === "missing-input-schema" && c.severity === "fail",
+      );
+      if (discoveryFailed || missingSchema) {
         process.exit(2);
       }
     },

@@ -82,6 +82,8 @@ See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md).
 | `build --demo --out <dir>` | Write optimized MCP tool bundle (requires `--out`) |
 | `competitors` | Adjacent MCP tooling map |
 
+Run `npm run prepublish-gate` before every publish. Run `npm run blind-eval` when you want a no-context agent pass against a packed tarball.
+
 ## Roadmap
 
 | Priority | Feature | Status |

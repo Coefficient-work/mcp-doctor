@@ -44,7 +44,9 @@
     "prepublishOnly": "npm run build",
     "test": "node --import tsx --test src/**/*.test.ts",
     "test:demo": "node dist/cli.js test --demo",
-    "analyze": "node dist/cli.js analyze --demo"
+    "analyze": "node dist/cli.js analyze --demo",
+    "prepublish-gate": "bash scripts/prepublish-gate.sh",
+    "blind-eval": "bash scripts/blind-eval.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.40",

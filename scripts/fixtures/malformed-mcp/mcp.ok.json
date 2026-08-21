@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "harborline": {
+      "command": "node",
+      "args": ["./server.js", "--with-schema"]
+    }
+  }
+}
