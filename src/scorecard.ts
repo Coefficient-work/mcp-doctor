@@ -50,6 +50,13 @@ const IDENTIFIER_OR_QUERY_RE =
   /^(id|.+_id|sku|uuid|slug|name|query|filter.*|q|search|path|url|uri|host|email|description|text|message|content|prompt|expr|expression)$/i;
 const ENUM_LIKE_NAME_RE = /^(status|type|mode|kind|category|scope|format|provider|channel|report_type|event_type)$/i;
 const DETAIL_LIST_LIMIT = 8;
+const VAGUE_TOOL_NAME_RE = /^(sync|process|handle|manage|do|run|execute|update|fetch|get|set)(_|-)?(stuff|things?|data|items?)$/i;
+const GRADE_A_BLOCKING_CHECKS = new Set([
+  "ambiguous-names",
+  "output-schema",
+  "destructive-warnings",
+  "credential-in-args",
+]);
 
 export function formatTruncatedList(items: string[], limit = DETAIL_LIST_LIMIT): string {
   if (items.length <= limit) return items.join(", ");
@@ -113,6 +120,12 @@ export function runScorecard(
     grade = "F";
   } else {
     score = computeScore(checks);
+    const blocksGradeA = checks.some(
+      (check) =>
+        GRADE_A_BLOCKING_CHECKS.has(check.id) &&
+        (check.severity === "warn" || check.severity === "fail" || check.id === "output-schema" && check.severity === "info"),
+    );
+    if (blocksGradeA) score = Math.min(score, 84);
     grade = gradeFromScore(score);
   }
   return {
@@ -211,7 +224,9 @@ function checkTokenFootprint(tools: ApiTool[]): ScorecardCheck[] {
 function checkDuplicateNames(tools: ApiTool[]): ScorecardCheck[] {
   const names = tools.map((t) => t.name);
   const dupes = names.filter((n, i) => names.indexOf(n) !== i);
-  const ambiguous = tools.filter((t) => t.name.length < 4 || /^[a-z]$/.test(t.name));
+  const ambiguous = tools.filter(
+    (t) => t.name.length < 4 || /^[a-z]$/.test(t.name) || VAGUE_TOOL_NAME_RE.test(t.name),
+  );
   const results: ScorecardCheck[] = [];
 
   if (dupes.length > 0) {
@@ -363,26 +378,29 @@ function checkMissingInputSchema(tools: ApiTool[]): ScorecardCheck[] {
 }
 
 function checkMissingRequired(tools: ApiTool[]): ScorecardCheck[] {
-  const missing = tools.filter((t) => {
+  const invalid = tools.filter((t) => {
     const props = schemaProperties(t.inputSchema);
     if (Object.keys(props).length === 0) return false;
     const required = t.inputSchema.required;
-    return !Array.isArray(required);
+    // JSON Schema defines an absent `required` keyword as no required
+    // properties. This is what Zod emits for an all-optional object, and it is
+    // semantically equivalent to `required: []`.
+    return required !== undefined && !Array.isArray(required);
   });
-  if (missing.length > 0) {
+  if (invalid.length > 0) {
     return [{
       id: "missing-required",
       category: "schema",
       severity: "warn",
-      message: `${missing.length} tool(s) have input properties but no required array`,
-      detail: formatTruncatedList(missing.map((t) => t.name)),
+      message: `${invalid.length} tool(s) have an invalid required declaration`,
+      detail: formatTruncatedList(invalid.map((t) => t.name)),
     }];
   }
   return [{
     id: "missing-required",
     category: "schema",
     severity: "pass",
-    message: "Object input schemas declare required properties",
+    message: "Object input schemas have valid required semantics",
   }];
 }
 

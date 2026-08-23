@@ -63,6 +63,7 @@ echo "inspect missing exit=$missing_code"
 [[ -s "$MISSING_REPORT" ]] || fail "missing-schema report was empty"
 assert_file_has "$MISSING_REPORT" "Grade F"
 assert_file_has "$MISSING_REPORT" "inputSchema"
+assert_file_has "$MISSING_REPORT" 'inspect_payload'
 assert_file_lacks "$MISSING_REPORT" "No high-priority fixes suggested"
 assert_file_lacks "$MISSING_REPORT" "may require auth"
 assert_file_lacks "$MISSING_REPORT" "copy to Louis"

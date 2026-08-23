@@ -98,15 +98,11 @@ async function runSingleModelEval(session, resolved, task, maxSteps) {
     };
 }
 export function evalTaskSucceeded(opts) {
-    const reason = opts.finishReason ?? "stop";
-    const okFinish = reason === "stop" || reason === "end";
-    if (!okFinish)
-        return false;
-    const calls = opts.events.filter((e) => e.type === "tool_call");
-    if (calls.length === 0)
-        return false;
-    const results = opts.events.filter((e) => e.type === "tool_result");
-    return results.some((e) => !e.isError);
+    // Providers disagree about the finish reason after a completed tool round
+    // (for example `stop`, `end`, or `tool-calls`). The observable product truth
+    // is whether the model produced a real, non-error MCP result. Never infer
+    // success from prose, and never discard a valid result because of metadata.
+    return opts.events.some((e) => e.type === "tool_result" && !e.isError);
 }
 function buildAiTools(session) {
     const tools = {};
