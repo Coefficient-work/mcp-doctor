@@ -77,13 +77,20 @@ export function formatReplayTimeline(events: ReplayEvent[]): string {
   return lines.join("\n");
 }
 
-export function formatFrictionReport(friction: FrictionBreakdown, succeeded: boolean): string {
+export function formatFrictionReport(
+  friction: FrictionBreakdown,
+  executionProven: boolean,
+  executionProofReason = executionProven
+    ? "At least one MCP tool returned a non-error result."
+    : "No successful tool result.",
+): string {
   const lines = [
     "## Agent Friction",
     "",
     `| Metric | Value |`,
     `|--------|-------|`,
-    `| Task succeeded | ${succeeded ? "Yes" : "No"} |`,
+    `| MCP execution proven | ${executionProven ? "Yes" : "No"} |`,
+    `| Execution evidence | ${executionProofReason} |`,
     `| Overall friction | **${friction.score} / 10** (lower is better) |`,
     `| Retries / errors | ${friction.retries} |`,
     `| Tool calls | ${friction.unnecessaryCalls} |`,

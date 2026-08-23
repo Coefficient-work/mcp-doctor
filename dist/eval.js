@@ -20,6 +20,8 @@ export async function runEval(entry, serverName, options) {
                     model: resolved.label,
                     provider: resolved.provider,
                     succeeded: false,
+                    executionProven: false,
+                    executionProofReason: "No successful tool result: model execution failed.",
                     friction: computeFriction([], false),
                     events: [],
                     error: e instanceof Error ? e.message : String(e),
@@ -78,15 +80,15 @@ async function runSingleModelEval(session, resolved, task, maxSteps) {
         }
     }
     const finalAnswer = result.text || undefined;
-    const succeeded = evalTaskSucceeded({
-        finishReason: result.finishReason,
-        events,
-    });
+    const executionProof = evalExecutionProof(events);
+    const succeeded = executionProof.proven;
     const friction = computeFriction(events, succeeded);
     return {
         model: resolved.label,
         provider: resolved.provider,
         succeeded,
+        executionProven: executionProof.proven,
+        executionProofReason: executionProof.reason,
         friction,
         events,
         finalAnswer,
@@ -98,15 +100,37 @@ async function runSingleModelEval(session, resolved, task, maxSteps) {
     };
 }
 export function evalTaskSucceeded(opts) {
-    const reason = opts.finishReason ?? "stop";
-    const okFinish = reason === "stop" || reason === "end";
-    if (!okFinish)
-        return false;
-    const calls = opts.events.filter((e) => e.type === "tool_call");
-    if (calls.length === 0)
-        return false;
-    const results = opts.events.filter((e) => e.type === "tool_result");
-    return results.some((e) => !e.isError);
+    // Providers disagree about the finish reason after a completed tool round
+    // (for example `stop`, `end`, or `tool-calls`). The observable product truth
+    // is whether the model produced a real, non-error MCP result. Never infer
+    // success from prose, and never discard a valid result because of metadata.
+    return evalExecutionProof(opts.events).proven;
+}
+export function evalExecutionProof(events) {
+    if (events.some((event) => event.type === "tool_result" && !event.isError)) {
+        return {
+            proven: true,
+            reason: "At least one MCP tool returned a non-error result.",
+        };
+    }
+    const calls = events.filter((event) => event.type === "tool_call");
+    if (calls.length === 0) {
+        return {
+            proven: false,
+            reason: "No successful tool result: the model made no MCP tool calls.",
+        };
+    }
+    const errors = events.filter((event) => event.type === "error" || event.isError);
+    if (errors.length > 0) {
+        return {
+            proven: false,
+            reason: "No successful tool result: every completed MCP tool call returned an error.",
+        };
+    }
+    return {
+        proven: false,
+        reason: "No successful tool result: MCP tool calls produced no result.",
+    };
 }
 function buildAiTools(session) {
     const tools = {};
@@ -226,11 +250,12 @@ export function formatModelMatrix(results) {
     const lines = [
         "## Model Compatibility Matrix",
         "",
-        "| Model | Success | Friction | Tokens |",
+        "| Model | Execution | Friction | Tokens |",
         "|-------|---------|----------|--------|",
     ];
     for (const r of results) {
-        const ok = r.error ? "error" : r.succeeded ? "pass" : "fail";
+        const proven = r.executionProven ?? r.succeeded;
+        const ok = r.error ? "error" : proven ? "pass" : "fail";
         const tokens = r.usage?.totalTokens ?? "-";
         lines.push(`| ${r.model} | ${ok} | ${r.friction.score} | ${tokens} |`);
     }
@@ -253,7 +278,11 @@ export function formatEvalReport(result) {
             lines.push(`Error: ${m.error}`, "");
             continue;
         }
-        lines.push(formatFrictionReport(m.friction, m.succeeded), "");
+        const proven = m.executionProven ?? m.succeeded;
+        const reason = m.executionProofReason ?? (proven
+            ? "At least one MCP tool returned a non-error result."
+            : "No successful tool result.");
+        lines.push(formatFrictionReport(m.friction, proven, reason), "");
         lines.push(formatReplayTimeline(m.events), "");
         if (m.finalAnswer) {
             lines.push("**Final answer:**", m.finalAnswer.slice(0, 500), "");

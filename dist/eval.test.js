@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { assertEvalAuth, evalTaskSucceeded } from "./eval.js";
+import { assertEvalAuth, evalExecutionProof, evalTaskSucceeded, formatEvalReport, } from "./eval.js";
 describe("assertEvalAuth", () => {
     const keys = [
         "AI_GATEWAY_API_KEY",
@@ -63,6 +63,33 @@ describe("evalTaskSucceeded", () => {
             finishReason: "stop",
             events: [{ step: 1, type: "assistant", summary: "I listed the tools." }],
         }), false);
+        assert.deepEqual(evalExecutionProof([{ step: 1, type: "assistant", summary: "I listed the tools." }]), {
+            proven: false,
+            reason: "No successful tool result: the model made no MCP tool calls.",
+        });
+    });
+    it("passes the 0.4.4 regression when a correct result ends with tool-calls", () => {
+        assert.equal(evalTaskSucceeded({
+            finishReason: "tool-calls",
+            events: [
+                { step: 1, type: "tool_call", summary: "Call get_shipment", toolName: "get_shipment" },
+                {
+                    step: 2,
+                    type: "tool_result",
+                    summary: '{"id":"SHP-1001","status":"in_transit"}',
+                    toolName: "get_shipment",
+                },
+            ],
+        }), true);
+    });
+    it("does not buy success with a tool call that produced no result", () => {
+        assert.equal(evalTaskSucceeded({
+            finishReason: "stop",
+            events: [
+                { step: 1, type: "tool_call", summary: "Call get_shipment", toolName: "get_shipment" },
+                { step: 2, type: "assistant", summary: "The shipment is probably in transit." },
+            ],
+        }), false);
     });
     it("fails when every tool result is an error", () => {
         assert.equal(evalTaskSucceeded({
@@ -78,5 +105,37 @@ describe("evalTaskSucceeded", () => {
                 },
             ],
         }), false);
+        assert.match(evalExecutionProof([
+            { step: 1, type: "tool_call", summary: "Call list_shipments", toolName: "list_shipments" },
+            { step: 2, type: "error", summary: "unauthorized", toolName: "list_shipments", isError: true },
+        ]).reason, /every completed MCP tool call returned an error/);
+    });
+});
+describe("formatEvalReport", () => {
+    it("reports execution proof without claiming arbitrary task success", () => {
+        const report = formatEvalReport({
+            serverName: "signalforge",
+            task: "Retrieve case CASE-42",
+            models: [{
+                    model: "openai/gpt-4o-mini",
+                    provider: "openai",
+                    succeeded: false,
+                    executionProven: false,
+                    executionProofReason: "No successful tool result: the model made no MCP tool calls.",
+                    friction: {
+                        score: 3,
+                        retries: 0,
+                        wrongToolCalls: 0,
+                        unnecessaryCalls: 0,
+                        authRecovery: false,
+                        totalSteps: 1,
+                        reasons: [],
+                    },
+                    events: [{ step: 1, type: "assistant", summary: "CASE-42 is open." }],
+                }],
+        });
+        assert.match(report, /MCP execution proven \| No/);
+        assert.match(report, /No successful tool result: the model made no MCP tool calls/);
+        assert.equal(report.includes("Task succeeded"), false);
     });
 });
