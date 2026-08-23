@@ -50,13 +50,16 @@ export function formatReplayTimeline(events) {
     }
     return lines.join("\n");
 }
-export function formatFrictionReport(friction, succeeded) {
+export function formatFrictionReport(friction, executionProven, executionProofReason = executionProven
+    ? "At least one MCP tool returned a non-error result."
+    : "No successful tool result.") {
     const lines = [
         "## Agent Friction",
         "",
         `| Metric | Value |`,
         `|--------|-------|`,
-        `| Task succeeded | ${succeeded ? "Yes" : "No"} |`,
+        `| MCP execution proven | ${executionProven ? "Yes" : "No"} |`,
+        `| Execution evidence | ${executionProofReason} |`,
         `| Overall friction | **${friction.score} / 10** (lower is better) |`,
         `| Retries / errors | ${friction.retries} |`,
         `| Tool calls | ${friction.unnecessaryCalls} |`,

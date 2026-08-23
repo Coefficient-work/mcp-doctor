@@ -68,6 +68,7 @@ assert_file_lacks "$MISSING_REPORT" "No high-priority fixes suggested"
 assert_file_lacks "$MISSING_REPORT" "may require auth"
 assert_file_lacks "$MISSING_REPORT" "copy to Louis"
 assert_file_lacks "$MISSING_REPORT" 'Score: 0/100'
+assert_file_has "$MISSING_REPORT" 'Score: [1-9][0-9]*/100'
 
 echo "==> eval missing inputSchema (human error, no Zod dump)"
 EVAL_OUT="$(mktemp -t mcp-doctor-eval.XXXXXX.txt)"

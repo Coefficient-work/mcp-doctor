@@ -365,6 +365,9 @@ describe("BeaconHub 0.4.4 scorecard", () => {
   });
 
   it("treats an absent required key as all-optional Zod semantics", () => {
+    // This is the wire shape emitted by the MCP SDK for a Zod object whose
+    // properties are all `.optional()`: properties are present and `required`
+    // is omitted.
     const result = runScorecard(
       { info: { title: "beaconhub" } },
       [
@@ -398,6 +401,29 @@ describe("BeaconHub 0.4.4 scorecard", () => {
               environment: { type: "string", description: "Environment name" },
             },
             required: "environment",
+          },
+        }),
+      ],
+      { mode: "live" },
+    );
+    const check = result.checks.find((c) => c.id === "missing-required");
+    assert.equal(check?.severity, "warn");
+    assert.match(check?.detail ?? "", /list_deployments/);
+  });
+
+  it("warns when required names a property that does not exist", () => {
+    const result = runScorecard(
+      { info: { title: "beaconhub" } },
+      [
+        liveTool({
+          name: "list_deployments",
+          description: "List deployments with optional environment filters for operators.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              environment: { type: "string", description: "Environment name" },
+            },
+            required: ["missing_property"],
           },
         }),
       ],
@@ -530,6 +556,21 @@ describe("RelayDesk 0.4.5 scorecard", () => {
             required: ["api_key_env_ref"],
           },
         }),
+        liveTool({
+          name: "purge_stale_quotes",
+          description: "Purging stale vendor quotes from the cache immediately.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              vendor_id: { type: "string", description: "Vendor identifier" },
+            },
+            required: ["vendor_id"],
+          },
+          outputSchema: {
+            type: "object",
+            properties: { removed: { type: "integer" } },
+          },
+        }),
       ],
       { mode: "live" },
     );
@@ -537,6 +578,8 @@ describe("RelayDesk 0.4.5 scorecard", () => {
     assert.equal(result.score, 84);
     assert.equal(result.checks.find((c) => c.id === "ambiguous-names")?.severity, "warn");
     assert.equal(result.checks.find((c) => c.id === "output-schema")?.severity, "info");
+    assert.equal(result.checks.find((c) => c.id === "destructive-warnings")?.severity, "warn");
+    assert.equal(result.checks.find((c) => c.id === "credential-in-args")?.severity, "pass");
   });
 
   it("caps an unmarked destructive tool below Grade A", () => {

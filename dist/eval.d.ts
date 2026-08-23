@@ -10,7 +10,10 @@ export type EvalOptions = {
 export type ModelEvalResult = {
     model: string;
     provider: ModelProvider;
+    /** @deprecated Use executionProven. Retained for JSON compatibility. */
     succeeded: boolean;
+    executionProven?: boolean;
+    executionProofReason?: string;
     friction: ReturnType<typeof computeFriction>;
     events: ReplayEvent[];
     finalAnswer?: string;
@@ -31,6 +34,10 @@ export declare function evalTaskSucceeded(opts: {
     finishReason?: string;
     events: ReplayEvent[];
 }): boolean;
+export declare function evalExecutionProof(events: ReplayEvent[]): {
+    proven: boolean;
+    reason: string;
+};
 export declare function assertEvalAuth(): void;
 export declare function formatModelMatrix(results: ModelEvalResult[]): string;
 export declare function formatEvalReport(result: EvalResult): string;

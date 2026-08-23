@@ -385,7 +385,11 @@ function checkMissingRequired(tools: ApiTool[]): ScorecardCheck[] {
     // JSON Schema defines an absent `required` keyword as no required
     // properties. This is what Zod emits for an all-optional object, and it is
     // semantically equivalent to `required: []`.
-    return required !== undefined && !Array.isArray(required);
+    if (required === undefined) return false;
+    if (!Array.isArray(required)) return true;
+    return required.some(
+      (name) => typeof name !== "string" || !Object.prototype.hasOwnProperty.call(props, name),
+    );
   });
   if (invalid.length > 0) {
     return [{

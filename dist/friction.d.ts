@@ -18,4 +18,4 @@ export type FrictionBreakdown = {
 };
 export declare function computeFriction(events: ReplayEvent[], succeeded: boolean): FrictionBreakdown;
 export declare function formatReplayTimeline(events: ReplayEvent[]): string;
-export declare function formatFrictionReport(friction: FrictionBreakdown, succeeded: boolean): string;
+export declare function formatFrictionReport(friction: FrictionBreakdown, executionProven: boolean, executionProofReason?: string): string;
