@@ -7,15 +7,11 @@ agent_bin="$3"
 
 cd "$sandbox" || exit 90
 
-{
-  for name in OPENAI_API_KEY ANTHROPIC_API_KEY OPENROUTER_API_KEY AI_GATEWAY_API_KEY OLLAMA_HOST; do
-    if [[ -n "${(P)name:-}" ]]; then
-      print "$name=PRESENT"
-    else
-      print "$name=ABSENT"
-    fi
-  done
-} > "$state_dir/provider-env.status"
+if ! node "$0:A:h/provider-env-status.mjs" > "$state_dir/provider-env.status" 2>&1; then
+  print "blind-eval GUI runner: invalid credential configuration; see provider-env.status" > "$sandbox/agent.log"
+  print 78 > "$sandbox/agent.exit"
+  exit 78
+fi
 
 if [[ ! -x "$agent_bin" ]]; then
   print "blind-eval GUI runner: agent executable not found: $agent_bin" > "$sandbox/agent.log"

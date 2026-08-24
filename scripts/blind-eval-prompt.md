@@ -14,7 +14,7 @@ Isolation rules (mandatory):
    npx --yes --package ./mcp-doctor.tgz mcp-doctor
 
 4. Use the tool the way a motivated first-time user would: `--help`, `--version`, then whatever commands look relevant. Write reports to files. Try at least one command that might fail.
-5. After `list --config ./mcp.json`, run `inspect <name>` **without** repeating `--config`. Also try `analyze <name>`, `test` and `analyze` with no arguments, `benchmark` without `--out`, `competitors`, `build --demo` without `--out`, and `eval` if any model key is already in the environment (do not create accounts).
+5. After `list --config ./mcp.json`, run `inspect <name>` **without** repeating `--config`. Also try `analyze <name>`, `test` and `analyze` with no arguments, `benchmark` without `--out`, `competitors`, `build --demo` without `--out`, and `eval` if a model key is available in the environment or MCP Doctor's default per-user credential file. Do not inspect or print credential values, and do not create accounts.
 6. Improve the MCP based on the tool's output. Re-run inspect after changes. Note what got better, what didn't, and what you still don't know how to fix.
 7. Maximize product feedback. Be specific and slightly adversarial. Quote exact CLI output, flags, error messages, and report sections. Do not be polite or vague.
 
