@@ -46,7 +46,8 @@
     "test:demo": "node dist/cli.js test --demo",
     "analyze": "node dist/cli.js analyze --demo",
     "prepublish-gate": "bash scripts/prepublish-gate.sh",
-    "blind-eval": "bash scripts/blind-eval.sh"
+    "blind-eval": "bash scripts/blind-eval.sh",
+    "blind-eval:gui": "bash scripts/blind-eval-gui.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.40",
