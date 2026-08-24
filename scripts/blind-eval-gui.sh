@@ -16,6 +16,8 @@ Usage:
 
 start creates a fresh /tmp/mcp-doctor-blind-XXXXXX sandbox, copies only the
 prompt into it, and starts Cursor Agent through a transient user LaunchAgent.
+Eval credentials are loaded from ~/.config/mcp-doctor/evaluation.env on each
+Mac (or MCP_DOCTOR_ENV_FILE when explicitly set); secret values are never shown.
 status reports progress without reading secrets. cleanup unloads and removes
 the transient job but deliberately leaves the sandbox and report intact.
 EOF

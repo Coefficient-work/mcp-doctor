@@ -2,8 +2,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { Command } from "commander";
-import { loadEnvLocal } from "./env.js";
-loadEnvLocal();
+import { loadEvalEnvironment } from "./env.js";
 import { buildMcpBundle } from "./build.js";
 import { getServerEntry, loadMcpConfig, resolveMcpConfigPath, } from "./config.js";
 import { formatCompetitorReport, loadRegistry, publicRegistry } from "./competitors.js";
@@ -149,9 +148,11 @@ program
     .option("-t, --task <text>", "Task for the agent to complete")
     .option("-m, --model <name>", "Model slug (openai/gpt-4o-mini, openrouter/openai/gpt-4o-mini, anthropic/claude-sonnet-4, ollama/llama3.2)", "openai/gpt-4o-mini")
     .option("--models <names>", "Comma-separated models for compatibility matrix")
+    .option("--env-file <path>", "Private eval credential file (default: ~/.config/mcp-doctor/evaluation.env)")
     .option("-o, --out <file>", "Write markdown report")
     .option("--json", "Print JSON")
     .action(async (server, opts) => {
+    loadEvalEnvironment({ envFile: opts.envFile });
     let serverName;
     let entry;
     if (opts.url) {

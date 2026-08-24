@@ -55,6 +55,24 @@ npx @coefficient-work/mcp-doctor@latest eval memory \
   --models openai/gpt-4o-mini -o eval-report.md
 ```
 
+### Portable eval credentials (macOS/Linux)
+
+For evals that run from temporary sandboxes or on more than one Mac, keep the
+same private file at `~/.config/mcp-doctor/evaluation.env` on each machine:
+
+```bash
+install -d -m 700 ~/.config/mcp-doctor
+install -m 600 examples/evaluation.env.example ~/.config/mcp-doctor/evaluation.env
+```
+
+Edit that file and add only the provider keys you use. The CLI never overrides
+an already exported environment variable. Without an explicit file, precedence
+is `./.env.local` followed by `~/.config/mcp-doctor/evaluation.env`. Select a
+different private file with `mcp-doctor eval --env-file /path/to/evaluation.env`
+or `MCP_DOCTOR_ENV_FILE`; explicitly selected files must exist and be mode 600.
+Only known model-provider variables are loaded, and values are parsed as data —
+not executed as shell code.
+
 OpenRouter uses its OpenAI-compatible endpoint through the Vercel AI SDK. Prefix an OpenRouter-routed model with `openrouter/`, followed by the normal OpenRouter model ID:
 
 ```bash
