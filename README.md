@@ -23,7 +23,7 @@ Open-source CLI — inspect, benchmark, and eval MCP servers before agents hit p
 Per-server reports: [`examples/reports/`](examples/reports/)
 
 ```bash
-npx @coefficient-work/mcp-doctor@latest benchmark -o ./reports
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor benchmark -o ./reports
 ```
 
 Public package: `@coefficient-work/mcp-doctor`. Do not install the unrelated unscoped `mcp-doctor` package.
@@ -40,17 +40,20 @@ Plus: **Recommended Improvements**, **Replay Timeline**, **Model Compatibility M
 
 ## Quick start
 
+Node 22 or Node 24 LTS is recommended. MCP Doctor `0.4.7` remains compatible
+with Node 20+, but Node 20 is no longer maintained by the Node.js project.
+
 ```bash
 # Benchmark public MCPs
-npx @coefficient-work/mcp-doctor@latest benchmark
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor benchmark
 
 # Inspect your Cursor MCP server (also reads ./mcp.json)
-npx @coefficient-work/mcp-doctor@latest list
-npx @coefficient-work/mcp-doctor@latest inspect <name> -o report.md
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor list
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor inspect <name> -o report.md
 
 # Cross-provider agent eval (BYOK — credential values stay local)
 export OPENROUTER_API_KEY=...
-npx @coefficient-work/mcp-doctor@latest eval memory \
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor eval memory \
   --task "List all tools and describe them" \
   --models openrouter/openai/gpt-5.6-sol,openrouter/anthropic/claude-sonnet-5,openrouter/google/gemini-3.7-flash \
   -o eval-report.md
@@ -78,7 +81,7 @@ OpenRouter uses its OpenAI-compatible endpoint through the Vercel AI SDK. Prefix
 
 ```bash
 export OPENROUTER_API_KEY=...
-npx @coefficient-work/mcp-doctor@latest eval memory \
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor eval memory \
   --task "List all tools and describe them" \
   --models openrouter/openai/gpt-5.6-sol,openrouter/anthropic/claude-sonnet-5,openrouter/google/gemini-3.7-flash \
   -o eval-report.md

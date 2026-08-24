@@ -3,7 +3,7 @@
 **Goal:** Connect to your team's MCP server (e.g. Vooma), run an agent-readiness scorecard, and send Louis a short feedback note.
 
 **Time:** ~5 minutes  
-**Requires:** Node 20+, your MCP already working in Cursor (or the URL/command from your team)
+**Requires:** Node 22 or Node 24 LTS recommended (Node 20 remains compatible with `0.4.7`), plus your MCP already working in Cursor (or the URL/command from your team)
 
 ---
 
@@ -12,7 +12,7 @@
 ### 1. See what MCP servers you have configured
 
 ```bash
-npx @coefficient-work/mcp-doctor@latest list
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor list
 ```
 
 Looks in `~/.cursor/mcp.json` (and Claude Desktop config on Mac). You should see server names like `vooma`, `vooma-production`, etc.
@@ -22,13 +22,13 @@ Looks in `~/.cursor/mcp.json` (and Claude Desktop config on Mac). You should see
 Replace `vooma` with the exact name from step 1:
 
 ```bash
-npx @coefficient-work/mcp-doctor@latest inspect vooma
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor inspect vooma
 ```
 
 Save the report:
 
 ```bash
-npx @coefficient-work/mcp-doctor@latest inspect vooma -o vooma-mcp-report.md
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor inspect vooma -o vooma-mcp-report.md
 ```
 
 Email or Slack the `.md` file to Louis, plus fill in the **Feedback** section at the bottom.
@@ -36,13 +36,13 @@ Email or Slack the `.md` file to Louis, plus fill in the **Feedback** section at
 ### 3. If you use a custom config path
 
 ```bash
-npx @coefficient-work/mcp-doctor@latest inspect vooma --config /path/to/mcp.json -o report.md
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor inspect vooma --config /path/to/mcp.json -o report.md
 ```
 
 ### 4. If you have a direct MCP URL (no Cursor config)
 
 ```bash
-npx @coefficient-work/mcp-doctor@latest inspect --url https://your-mcp-host/mcp \
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor inspect --url https://your-mcp-host/mcp \
   --header "Authorization:Bearer YOUR_TOKEN" \
   -o report.md
 ```
@@ -76,7 +76,7 @@ Public docs ([docs.vooma.ai](https://docs.vooma.ai)) list Agent Toolkits and Pub
 **BYOK eval:** `inspect` needs no model key. `eval` accepts OpenRouter, OpenAI, Anthropic, Vercel AI Gateway, or Ollama credentials. For a cross-provider matrix, put an `OPENROUTER_API_KEY` in `~/.config/mcp-doctor/evaluation.env`, run `chmod 600` on that file, and use explicit `openrouter/...` model slugs.
 
 ```bash
-npx @coefficient-work/mcp-doctor@latest eval memory --task "List all tools" \
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor eval memory --task "List all tools" \
   --models openrouter/openai/gpt-5.6-sol,openrouter/anthropic/claude-sonnet-5,openrouter/google/gemini-3.7-flash \
   -o eval.md
 ```
@@ -93,8 +93,8 @@ Execution proof means at least one real MCP tool returned a non-error result. It
 ## Try the demo (no Vooma access needed)
 
 ```bash
-npx @coefficient-work/mcp-doctor@latest test --demo
-npx @coefficient-work/mcp-doctor@latest competitors --category testing
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor test --demo
+npx --yes --package @coefficient-work/mcp-doctor@0.4.7 mcp-doctor competitors --category testing
 ```
 
 ---
