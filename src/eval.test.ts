@@ -5,6 +5,7 @@ import {
   evalExecutionProof,
   evalTaskSucceeded,
   formatEvalReport,
+  resolveEvalModel,
 } from "./eval.js";
 
 describe("assertEvalAuth", () => {
@@ -13,6 +14,7 @@ describe("assertEvalAuth", () => {
     "VERCEL_OIDC_TOKEN",
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
+    "OPENROUTER_API_KEY",
     "OLLAMA_HOST",
   ] as const;
 
@@ -45,6 +47,48 @@ describe("assertEvalAuth", () => {
     try {
       for (const key of keys) delete process.env[key];
       assert.throws(() => assertEvalAuth(), /eval needs a model key/);
+    } finally {
+      restore(prev);
+    }
+  });
+
+  it("accepts OPENROUTER_API_KEY and routes explicit OpenRouter model slugs", () => {
+    const prev = snapshot();
+    try {
+      for (const key of keys) delete process.env[key];
+      process.env.OPENROUTER_API_KEY = "sk-or-test";
+      assert.doesNotThrow(() => assertEvalAuth());
+      const resolved = resolveEvalModel("openrouter/openai/gpt-4o-mini");
+      assert.equal(resolved.provider, "openrouter");
+      assert.equal(resolved.label, "openrouter/openai/gpt-4o-mini");
+      assert.equal((resolved.model as { modelId?: string }).modelId, "openai/gpt-4o-mini");
+    } finally {
+      restore(prev);
+    }
+  });
+
+  it("uses OpenRouter as the fallback when it is the only configured provider", () => {
+    const prev = snapshot();
+    try {
+      for (const key of keys) delete process.env[key];
+      process.env.OPENROUTER_API_KEY = "sk-or-test";
+      const resolved = resolveEvalModel("anthropic/claude-sonnet-4");
+      assert.equal(resolved.provider, "openrouter");
+      assert.equal((resolved.model as { modelId?: string }).modelId, "anthropic/claude-sonnet-4");
+    } finally {
+      restore(prev);
+    }
+  });
+
+  it("does not send an Anthropic slug to OpenAI when only an OpenAI key exists", () => {
+    const prev = snapshot();
+    try {
+      for (const key of keys) delete process.env[key];
+      process.env.OPENAI_API_KEY = "sk-test";
+      assert.throws(
+        () => resolveEvalModel("anthropic/claude-sonnet-4"),
+        /ANTHROPIC_API_KEY or OPENROUTER_API_KEY/,
+      );
     } finally {
       restore(prev);
     }

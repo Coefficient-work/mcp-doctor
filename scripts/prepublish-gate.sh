@@ -75,7 +75,7 @@ EVAL_OUT="$(mktemp -t mcp-doctor-eval.XXXXXX.txt)"
 set +e
 (
   cd "$FIXTURE"
-  OPENAI_API_KEY=sk-gate-test npx --yes --package "$TARBALL" mcp-doctor eval harborline --config ./mcp.missing.json --task "list tools"
+  OPENROUTER_API_KEY=sk-or-gate-test npx --yes --package "$TARBALL" mcp-doctor eval harborline --config ./mcp.missing.json --task "list tools" --model openrouter/openai/gpt-4o-mini
 ) >"$EVAL_OUT" 2>&1
 eval_code=$?
 set -e
