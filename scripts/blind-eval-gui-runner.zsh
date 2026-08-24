@@ -8,7 +8,7 @@ agent_bin="$3"
 cd "$sandbox" || exit 90
 
 {
-  for name in OPENAI_API_KEY ANTHROPIC_API_KEY AI_GATEWAY_API_KEY OLLAMA_HOST; do
+  for name in OPENAI_API_KEY ANTHROPIC_API_KEY OPENROUTER_API_KEY AI_GATEWAY_API_KEY OLLAMA_HOST; do
     if [[ -n "${(P)name:-}" ]]; then
       print "$name=PRESENT"
     else

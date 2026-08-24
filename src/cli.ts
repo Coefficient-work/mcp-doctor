@@ -187,7 +187,7 @@ program
   .option("--url <url>", "MCP HTTP endpoint")
   .option("-H, --header <key:value>", "HTTP header", (v: string, acc: string[]) => [...acc, v], [] as string[])
   .option("-t, --task <text>", "Task for the agent to complete")
-  .option("-m, --model <name>", "Model slug (openai/gpt-4o-mini, anthropic/claude-sonnet-4, ollama/llama3.2)", "openai/gpt-4o-mini")
+  .option("-m, --model <name>", "Model slug (openai/gpt-4o-mini, openrouter/openai/gpt-4o-mini, anthropic/claude-sonnet-4, ollama/llama3.2)", "openai/gpt-4o-mini")
   .option("--models <names>", "Comma-separated models for compatibility matrix")
   .option("-o, --out <file>", "Write markdown report")
   .option("--json", "Print JSON")

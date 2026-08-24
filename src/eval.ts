@@ -12,7 +12,7 @@ import {
   type ReplayEvent,
 } from "./friction.js";
 
-export type ModelProvider = "openai" | "anthropic" | "gateway" | "ollama";
+export type ModelProvider = "openai" | "anthropic" | "openrouter" | "gateway" | "ollama";
 
 export type EvalOptions = {
   task: string;
@@ -258,12 +258,13 @@ export function assertEvalAuth(): void {
     process.env.VERCEL_OIDC_TOKEN ||
     process.env.OPENAI_API_KEY ||
     process.env.ANTHROPIC_API_KEY ||
+    process.env.OPENROUTER_API_KEY ||
     process.env.OLLAMA_HOST
   ) {
     return;
   }
   throw new Error(
-    "eval needs a model key. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY, or OLLAMA_HOST. Keys stay local - never stored by mcp-doctor.",
+    "eval needs a model key. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, AI_GATEWAY_API_KEY, or OLLAMA_HOST. Keys stay local - never stored by mcp-doctor.",
   );
 }
 
@@ -274,7 +275,15 @@ function stripProviderPrefix(model: string, prefixes: string[]): string {
   return model;
 }
 
-function resolveEvalModel(raw: string): ResolvedEvalModel {
+function createOpenRouterProvider() {
+  return createOpenAICompatible({
+    name: "openrouter",
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: process.env.OPENROUTER_API_KEY,
+  });
+}
+
+export function resolveEvalModel(raw: string): ResolvedEvalModel {
   const slug = normalizeModelSlug(raw);
 
   if (slug.startsWith("ollama/")) {
@@ -284,20 +293,38 @@ function resolveEvalModel(raw: string): ResolvedEvalModel {
     return { label: slug, provider: "ollama", model: ollama(id) };
   }
 
+  if (slug.startsWith("openrouter/")) {
+    if (!process.env.OPENROUTER_API_KEY) {
+      throw new Error("OPENROUTER_API_KEY is not set. Keys stay local - never stored by mcp-doctor.");
+    }
+    const openrouter = createOpenRouterProvider();
+    return {
+      label: slug,
+      provider: "openrouter",
+      model: openrouter(stripProviderPrefix(slug, ["openrouter/"])),
+    };
+  }
+
   if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) {
     return { label: slug, provider: "gateway", model: slug as LanguageModel };
   }
 
   if (slug.startsWith("anthropic/") || slug.startsWith("claude")) {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY is not set. Keys stay local - never stored by mcp-doctor.");
+    if (process.env.ANTHROPIC_API_KEY) {
+      const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      return {
+        label: slug,
+        provider: "anthropic",
+        model: anthropic(stripProviderPrefix(slug, ["anthropic/"])),
+      };
     }
-    const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    return {
-      label: slug,
-      provider: "anthropic",
-      model: anthropic(stripProviderPrefix(slug, ["anthropic/"])),
-    };
+    if (process.env.OPENROUTER_API_KEY) {
+      const openrouter = createOpenRouterProvider();
+      return { label: slug, provider: "openrouter", model: openrouter(slug) };
+    }
+    throw new Error(
+      "ANTHROPIC_API_KEY or OPENROUTER_API_KEY is required for Anthropic model slugs. Keys stay local - never stored by mcp-doctor.",
+    );
   }
 
   if (process.env.OPENAI_API_KEY) {
@@ -318,6 +345,15 @@ function resolveEvalModel(raw: string): ResolvedEvalModel {
     };
   }
 
+  if (process.env.OPENROUTER_API_KEY) {
+    const openrouter = createOpenRouterProvider();
+    return {
+      label: slug,
+      provider: "openrouter",
+      model: openrouter(slug),
+    };
+  }
+
   if (process.env.OLLAMA_HOST) {
     const ollama = createOpenAICompatible({
       name: "ollama",
@@ -327,7 +363,7 @@ function resolveEvalModel(raw: string): ResolvedEvalModel {
   }
 
   throw new Error(
-    "eval needs a model key. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY, or OLLAMA_HOST. Keys stay local - never stored by mcp-doctor.",
+    "eval needs a model key. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, AI_GATEWAY_API_KEY, or OLLAMA_HOST. Keys stay local - never stored by mcp-doctor.",
   );
 }
 

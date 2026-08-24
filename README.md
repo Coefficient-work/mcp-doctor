@@ -49,10 +49,19 @@ npx @coefficient-work/mcp-doctor@latest list
 npx @coefficient-work/mcp-doctor@latest inspect <name> -o report.md
 
 # Agent eval (BYOK — keys stay local)
-export OPENAI_API_KEY=...   # or ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY, OLLAMA_HOST
+export OPENAI_API_KEY=...   # or ANTHROPIC_API_KEY, OPENROUTER_API_KEY, AI_GATEWAY_API_KEY, OLLAMA_HOST
 npx @coefficient-work/mcp-doctor@latest eval memory \
   --task "List all tools and describe them" \
   --models openai/gpt-4o-mini -o eval-report.md
+```
+
+OpenRouter uses its OpenAI-compatible endpoint through the Vercel AI SDK. Prefix an OpenRouter-routed model with `openrouter/`, followed by the normal OpenRouter model ID:
+
+```bash
+export OPENROUTER_API_KEY=...
+npx @coefficient-work/mcp-doctor@latest eval memory \
+  --task "List all tools and describe them" \
+  --model openrouter/openai/gpt-4o-mini -o eval-report.md
 ```
 
 ### AI Gateway setup (one-time)
