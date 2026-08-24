@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatCompetitorReport, loadRegistry, publicRegistry } from "./competitors.js";
 import { formatAnalyzeReport } from "./report.js";
-import { formatStateOfMcpReport } from "./benchmark.js";
+import { classifyBenchmarkError, formatStateOfMcpReport } from "./benchmark.js";
 function assertAscii(label, text) {
     const bad = [...text].filter((ch) => ch.charCodeAt(0) > 127);
     assert.equal(bad.length, 0, `${label} contains non-ASCII: ${JSON.stringify(bad.slice(0, 8))}`);
@@ -45,5 +45,29 @@ describe("competitors public map", () => {
                 transport: "stdio",
             },
         ], "2026-08-21"));
+    });
+});
+describe("benchmark failure reporting", () => {
+    it("categorizes common launch, auth, timeout, network, and transport failures", () => {
+        assert.equal(classifyBenchmarkError("spawn npx ENOENT"), "launch");
+        assert.equal(classifyBenchmarkError("401 Unauthorized"), "authentication");
+        assert.equal(classifyBenchmarkError("request timed out"), "timeout");
+        assert.equal(classifyBenchmarkError("getaddrinfo ENOTFOUND example.com"), "network");
+        assert.equal(classifyBenchmarkError("MCP error -32000: Connection closed"), "transport");
+    });
+    it("prints categorized connection failures", () => {
+        const report = formatStateOfMcpReport([{
+                id: "broken",
+                name: "Broken MCP",
+                grade: "F",
+                score: 0,
+                toolCount: 0,
+                tokens: 0,
+                connectMs: 10,
+                transport: "n/a",
+                error: "MCP error -32000: Connection closed",
+                errorKind: "transport",
+            }], "2026-08-24");
+        assert.match(report, /Broken MCP.*\[transport\]/);
     });
 });

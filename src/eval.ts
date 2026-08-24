@@ -19,6 +19,8 @@ export type EvalOptions = {
   models?: string[];
   maxSteps?: number;
   timeoutMs?: number;
+  /** Called after MCP connection and tool-schema validation, before provider execution. */
+  onReady?: () => void;
 };
 
 export type ModelEvalResult = {
@@ -59,6 +61,7 @@ export async function runEval(
   const results: ModelEvalResult[] = [];
 
   try {
+    options.onReady?.();
     for (const model of models) {
       const resolved = resolveEvalModel(model);
       try {
@@ -135,7 +138,9 @@ async function runSingleModelEval(
         step: ++stepNum,
         type: isError ? "error" : "tool_result",
         toolName: tr.toolName,
-        summary: output.slice(0, 120),
+        summary: isError
+          ? `Error from ${tr.toolName}: ${output.slice(0, 120)}`
+          : `Result from ${tr.toolName}`,
         detail: output.slice(0, 500),
         isError,
       });
@@ -402,7 +407,7 @@ export function formatEvalReport(result: EvalResult): string {
     "",
     `**Task:** ${result.task}`,
     "",
-    "_BYOK eval via the Vercel AI SDK. Keys stay on this machine._",
+    "_BYOK eval via the Vercel AI SDK. Credential values stay on this machine; the task, tool schemas, calls, and results are sent to the selected model provider._",
     "",
     formatModelMatrix(result.models),
     "",
@@ -421,11 +426,28 @@ export function formatEvalReport(result: EvalResult): string {
         : "No successful tool result."
     );
     lines.push(formatFrictionReport(m.friction, proven, reason), "");
-    lines.push(formatReplayTimeline(m.events), "");
+    const replayEvents = m.finalAnswer
+      ? omitDuplicatedFinalAnswerEvent(m.events, m.finalAnswer)
+      : m.events;
+    lines.push(formatReplayTimeline(replayEvents), "");
     if (m.finalAnswer) {
       lines.push("**Final answer:**", m.finalAnswer.slice(0, 500), "");
     }
   }
 
   return lines.join("\n");
+}
+
+function omitDuplicatedFinalAnswerEvent(events: ReplayEvent[], finalAnswer: string): ReplayEvent[] {
+  let lastAssistantIndex = -1;
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    if (events[index]?.type === "assistant") {
+      lastAssistantIndex = index;
+      break;
+    }
+  }
+  if (lastAssistantIndex < 0) return events;
+  const summary = events[lastAssistantIndex]!.summary.trim();
+  if (!summary || !finalAnswer.trim().startsWith(summary)) return events;
+  return events.filter((_, index) => index !== lastAssistantIndex);
 }

@@ -7,6 +7,8 @@ export type EvalOptions = {
     models?: string[];
     maxSteps?: number;
     timeoutMs?: number;
+    /** Called after MCP connection and tool-schema validation, before provider execution. */
+    onReady?: () => void;
 };
 export type ModelEvalResult = {
     model: string;

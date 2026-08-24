@@ -67,4 +67,21 @@ describe("suggestedFixesFromChecks", () => {
         assert.equal(md.includes("No high-priority fixes suggested"), false);
         assert.match(md, /inputSchema/);
     });
+    it("does not truncate bloated descriptions into sentence fragments", () => {
+        const tool = {
+            ...thinTool,
+            name: "explain_mismatch",
+            description: `Analyze a mismatch. ${"Walk every source entry and compare normalization rules. ".repeat(12)}`,
+        };
+        const checks = [{
+                id: "descriptions",
+                category: "docs",
+                severity: "warn",
+                message: "1 tool has a bloated description",
+                detail: "explain_mismatch",
+            }];
+        const suggested = suggestedFixesFromChecks(checks, [tool]).map((fix) => fix.suggested).join("\n");
+        assert.match(suggested, /one complete sentence under 80 characters/);
+        assert.equal(suggested.includes("constructs a detailed."), false);
+    });
 });

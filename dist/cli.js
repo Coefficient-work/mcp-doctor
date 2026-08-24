@@ -69,7 +69,7 @@ program
         console.log("  (no servers - add one in Cursor Settings > MCP)");
     }
     else {
-        console.log(`\nInspect: npx @coefficient-work/mcp-doctor@${version} inspect <name>`);
+        console.log("\nNext: mcp-doctor inspect <name>");
     }
 });
 program
@@ -141,7 +141,7 @@ program
 });
 program
     .command("eval [server]")
-    .description("BYOK agent eval against a live MCP server (task success, friction, replay)")
+    .description("BYOK agent eval against a live MCP server (execution proof, friction, replay)")
     .option("--config <path>", "Path to mcp.json")
     .option("--url <url>", "MCP HTTP endpoint")
     .option("-H, --header <key:value>", "HTTP header", (v, acc) => [...acc, v], [])
@@ -169,10 +169,13 @@ program
     }
     const task = opts.task ?? "List all MCP tools and describe what each one does.";
     const models = opts.models?.split(",").map((s) => s.trim()) ?? [opts.model ?? "openai/gpt-4o-mini"];
-    if (!opts.json) {
-        console.error(`Evaluating ${serverName} with ${models.join(", ")}...`);
-    }
-    const result = await runEval(entry, serverName, { task, models });
+    const result = await runEval(entry, serverName, {
+        task,
+        models,
+        onReady: opts.json
+            ? undefined
+            : () => console.error(`Evaluating ${serverName} with ${models.join(", ")}...`),
+    });
     const report = formatEvalReport(result);
     if (opts.json)
         console.log(JSON.stringify(result, null, 2));
@@ -215,6 +218,11 @@ program
             await writeFile(resolve(opts.out, `${r.id}.md`), r.markdown, "utf8");
         }
         console.error(`Wrote ${result.reports.length} reports to ${opts.out}/`);
+    }
+    const connected = result.rows.filter((row) => !row.error).length;
+    if (result.rows.length > 0 && connected === 0) {
+        console.error("Benchmark failed: 0 servers connected. Review the categorized connection failures above; no quality scores were produced.");
+        process.exitCode = 2;
     }
 });
 program
@@ -281,13 +289,10 @@ program
     .description("Write optimized MCP tool bundle from an OpenAPI spec")
     .argument("[spec]", "OpenAPI path or URL")
     .option("--demo", "Use bundled demo API")
-    .option("-o, --out <dir>", "Output directory")
+    .requiredOption("-o, --out <dir>", "Output directory (required)")
     .option("-b, --budget <tokens>", "Token budget", parseInt)
     .option("-n, --name <name>", "MCP server name in config", "mcp-doctor")
     .action(async (spec, opts) => {
-    if (!opts.out) {
-        throw new Error("build needs --out <dir>");
-    }
     const filePath = await requireOpenApiSpec(spec, opts.demo, "build");
     const doc = await loadOpenApi(filePath);
     const specArg = opts.demo ? "--demo" : spec.startsWith("http") ? spec : filePath;
@@ -301,7 +306,7 @@ program
         `  Tools: ${result.toolCount}`,
         `  Tokens: ${result.baselineTokens} -> ${result.optimizedTokens} (${result.reductionPct}% reduction)`,
         `  Output: ${result.outDir}/`,
-        `    tools.json  cursor-mcp.json  TRY-IN-CURSOR.md`,
+        `    tools.json  manifest.json  cursor-mcp.json  TRY-IN-CURSOR.md`,
     ].join("\n"));
 });
 program

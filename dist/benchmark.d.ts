@@ -17,7 +17,10 @@ export type BenchmarkRow = {
     transport: string;
     topIssue?: string;
     error?: string;
+    errorKind?: BenchmarkErrorKind;
 };
+export type BenchmarkErrorKind = "authentication" | "launch" | "network" | "timeout" | "transport" | "unknown";
+export declare function classifyBenchmarkError(error: string): BenchmarkErrorKind;
 export type BenchmarkRunResult = {
     rows: BenchmarkRow[];
     reports: Array<{

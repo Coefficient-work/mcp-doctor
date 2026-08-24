@@ -1,7 +1,7 @@
 # Competitor registry
 
 **Product:** [mcp-doctor](https://github.com/coefficient-work/mcp-doctor)  
-**Positioning:** Agent-facing API QA � *"We prove agents can actually use your MCP."*  
+**Positioning:** Agent-facing API QA - *"Prove that models can execute your MCP, then see where schemas create friction."*
 **Last updated:** 2026-07-10
 
 This registry tracks every competitor surfaced in the [ChatGPT Stripe/Stainless research thread](https://github.com/coefficient-ai/coefficient) plus Coefficient desk teardowns.
