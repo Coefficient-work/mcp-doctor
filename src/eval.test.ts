@@ -145,6 +145,22 @@ describe("evalTaskSucceeded", () => {
     );
   });
 
+  it("accepts successful execution proof across provider finish metadata", () => {
+    const events = [
+      { step: 1, type: "tool_call" as const, summary: "Call get_shipment", toolName: "get_shipment" },
+      {
+        step: 2,
+        type: "tool_result" as const,
+        summary: "Result from get_shipment",
+        detail: '{"id":"SHP-1001"}',
+        toolName: "get_shipment",
+      },
+    ];
+    for (const finishReason of ["stop", "end", "tool-calls"]) {
+      assert.equal(evalTaskSucceeded({ finishReason, events }), true, finishReason);
+    }
+  });
+
   it("does not buy success with a tool call that produced no result", () => {
     assert.equal(
       evalTaskSucceeded({
@@ -200,6 +216,7 @@ describe("formatEvalReport", () => {
           score: 3,
           retries: 0,
           wrongToolCalls: 0,
+          toolCalls: 0,
           unnecessaryCalls: 0,
           authRecovery: false,
           totalSteps: 1,
@@ -212,5 +229,72 @@ describe("formatEvalReport", () => {
     assert.match(report, /MCP execution proven \| No/);
     assert.match(report, /No successful tool result: the model made no MCP tool calls/);
     assert.equal(report.includes("Task succeeded"), false);
+  });
+
+  it("keeps markdown and JSON tool-call accounting aligned with replay events", () => {
+    const result = {
+      serverName: "signalforge",
+      task: "Retrieve case CASE-42",
+      models: [{
+        model: "openrouter/anthropic/claude-sonnet-5",
+        provider: "openrouter" as const,
+        succeeded: true,
+        executionProven: true,
+        executionProofReason: "At least one MCP tool returned a non-error result.",
+        friction: {
+          score: 0,
+          retries: 0,
+          wrongToolCalls: 0,
+          toolCalls: 1,
+          unnecessaryCalls: 0,
+          authRecovery: false,
+          totalSteps: 2,
+          reasons: [],
+        },
+        events: [
+          { step: 1, type: "tool_call" as const, summary: "Call get_case", toolName: "get_case" },
+          { step: 2, type: "tool_result" as const, summary: "Result from get_case", detail: '{"id":"CASE-42"}', toolName: "get_case" },
+        ],
+      }],
+    };
+    const report = formatEvalReport(result);
+    assert.match(report, /Tool calls \| 1/);
+    assert.equal(result.models[0]?.friction.toolCalls, result.models[0]?.events.filter((event) => event.type === "tool_call").length);
+    assert.match(JSON.stringify(result), /"toolCalls":1/);
+  });
+
+  it("renders a model's final answer once while retaining call/result evidence", () => {
+    const answer = "CASE-42 is open.";
+    const report = formatEvalReport({
+      serverName: "signalforge",
+      task: "Retrieve case CASE-42",
+      models: [{
+        model: "openrouter/openai/gpt-5.6-sol",
+        provider: "openrouter",
+        succeeded: true,
+        executionProven: true,
+        executionProofReason: "At least one MCP tool returned a non-error result.",
+        friction: {
+          score: 0,
+          retries: 0,
+          wrongToolCalls: 0,
+          toolCalls: 1,
+          unnecessaryCalls: 0,
+          authRecovery: false,
+          totalSteps: 3,
+          reasons: [],
+        },
+        events: [
+          { step: 1, type: "tool_call", summary: "Call get_case", toolName: "get_case" },
+          { step: 2, type: "tool_result", summary: "Result from get_case", detail: '{"id":"CASE-42"}', toolName: "get_case" },
+          { step: 3, type: "assistant", summary: answer },
+        ],
+        finalAnswer: answer,
+      }],
+    });
+
+    assert.equal(report.match(/CASE-42 is open\./g)?.length, 1);
+    assert.match(report, /Call get_case/);
+    assert.match(report, /Result from get_case/);
   });
 });

@@ -6,6 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STATE_ROOT="${TMPDIR:-/tmp}/mcp-doctor-blind-jobs"
+BLIND_MODELS="${MCP_DOCTOR_BLIND_MODELS:-openrouter/openai/gpt-5.6-sol,openrouter/anthropic/claude-sonnet-5,openrouter/google/gemini-3.7-flash}"
 
 usage() {
   cat <<'EOF'
@@ -68,16 +69,26 @@ start_job() {
   local sandbox
   sandbox="$(mktemp -d /tmp/mcp-doctor-blind-XXXXXX)"
   chmod 700 "$sandbox"
-  cp "$prompt_src" "$sandbox/PROMPT.md"
+  (
+    cd "$ROOT"
+    rm -f "$ROOT"/coefficient-work-mcp-doctor-*.tgz
+    npm pack --silent >/dev/null
+  )
+  local tarball
+  tarball="$(ls -1 "$ROOT"/coefficient-work-mcp-doctor-*.tgz | head -n 1)"
+  [[ -f "$tarball" ]] || { echo "npm pack produced no tarball" >&2; exit 2; }
+  cp "$tarball" "$sandbox/mcp-doctor.tgz"
+  sed "s|__MCP_DOCTOR_BLIND_MODELS__|$BLIND_MODELS|g" "$prompt_src" > "$sandbox/PROMPT.md"
   job_parts "$sandbox"
   mkdir -p "$STATE_DIR"
   chmod 700 "$STATE_DIR"
+  printf '%s\n' "$BLIND_MODELS" > "$STATE_DIR/models.txt"
 
   local plist="$STATE_DIR/$LABEL.plist"
   local launch_log="$STATE_DIR/launch.log"
   local login_command
-  printf -v login_command 'exec %q %q %q %q' \
-    "$ROOT/scripts/blind-eval-gui-runner.zsh" "$sandbox" "$STATE_DIR" "$agent_bin"
+  printf -v login_command 'exec %q %q %q %q %q' \
+    "$ROOT/scripts/blind-eval-gui-runner.zsh" "$sandbox" "$STATE_DIR" "$agent_bin" "$ROOT"
 
   plutil -create xml1 "$plist"
   plutil -insert Label -string "$LABEL" "$plist"

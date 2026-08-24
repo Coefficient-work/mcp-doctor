@@ -8,8 +8,9 @@ export function computeFriction(events, succeeded) {
     const reasons = [];
     if (retries > 0)
         reasons.push(`${retries} failed tool call(s) / retries`);
-    if (unnecessaryCalls > 1)
-        reasons.push(`${unnecessaryCalls} tool calls (may be redundant)`);
+    if (unnecessaryCalls > 0) {
+        reasons.push(`${unnecessaryCalls} additional tool call(s) beyond the first successful result`);
+    }
     if (authRecovery)
         reasons.push("auth recovery may have been required");
     if (toolCalls.length > 5)
@@ -25,6 +26,7 @@ export function computeFriction(events, succeeded) {
         score,
         retries,
         wrongToolCalls: 0,
+        toolCalls: toolCalls.length,
         unnecessaryCalls,
         authRecovery,
         totalSteps: events.length,
@@ -62,7 +64,8 @@ export function formatFrictionReport(friction, executionProven, executionProofRe
         `| Execution evidence | ${executionProofReason} |`,
         `| Overall friction | **${friction.score} / 10** (lower is better) |`,
         `| Retries / errors | ${friction.retries} |`,
-        `| Tool calls | ${friction.unnecessaryCalls} |`,
+        `| Tool calls | ${friction.toolCalls} |`,
+        `| Additional calls | ${friction.unnecessaryCalls} |`,
         `| Auth recovery | ${friction.authRecovery ? "likely" : "no"} |`,
     ];
     if (friction.reasons.length > 0) {

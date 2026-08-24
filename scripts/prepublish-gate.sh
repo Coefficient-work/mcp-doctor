@@ -44,9 +44,11 @@ OK_REPORT="$(mktemp -t mcp-doctor-ok.XXXXXX.md)"
 EVAL_OUT=""
 JSON_OUT=""
 NEST_DIR=""
+BENCH_DIR=""
 cleanup() {
   rm -f "$MISSING_REPORT" "$OK_REPORT" "$EVAL_OUT" "$JSON_OUT"
   [[ -n "$NEST_DIR" && -d "$NEST_DIR" ]] && rm -rf "$NEST_DIR"
+  [[ -n "$BENCH_DIR" && -d "$BENCH_DIR" ]] && rm -rf "$BENCH_DIR"
 }
 trap cleanup EXIT
 
@@ -138,5 +140,29 @@ echo "$destructive_detail" | grep -q "prune_stale_caches" || fail "prune_stale_c
 echo "$destructive_detail" | grep -q "purge_stale_sessions" || fail "purge_stale_sessions was not in destructive-warnings"
 echo "$destructive_detail" | grep -q "zero_audit_trail" || fail "zero_audit_trail was not in destructive-warnings"
 echo "$destructive_detail" | grep -q "update_routing_policy" && fail "update_routing_policy was flagged destructive"
+
+echo "==> build help marks --out as required"
+BUILD_HELP="$(npx --yes --package "$TARBALL" mcp-doctor build --help)"
+echo "$BUILD_HELP" | grep -E -q -- '--out <dir>.*required' || fail "build --help did not mark --out required"
+
+echo "==> benchmark with zero connections exits 2 and categorizes failure"
+BENCH_DIR="$(mktemp -d -t mcp-doctor-benchmark.XXXXXX)"
+cat > "$BENCH_DIR/catalog.json" <<'JSON'
+{
+  "servers": [{
+    "id": "missing-runtime",
+    "name": "Missing Runtime",
+    "category": "fixture",
+    "entry": { "command": "mcp-doctor-definitely-missing-runtime" }
+  }]
+}
+JSON
+set +e
+npx --yes --package "$TARBALL" mcp-doctor benchmark --catalog "$BENCH_DIR/catalog.json" > "$BENCH_DIR/output.txt" 2>&1
+bench_code=$?
+set -e
+[[ "$bench_code" -eq 2 ]] || fail "zero-connection benchmark exit $bench_code, expected 2"
+assert_file_has "$BENCH_DIR/output.txt" '\[launch\]'
+assert_file_has "$BENCH_DIR/output.txt" '0 servers connected'
 
 echo "prepublish-gate PASS ($TARBALL)"

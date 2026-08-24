@@ -14,13 +14,22 @@ Isolation rules (mandatory):
    npx --yes --package ./mcp-doctor.tgz mcp-doctor
 
 4. Use the tool the way a motivated first-time user would: `--help`, `--version`, then whatever commands look relevant. Write reports to files. Try at least one command that might fail.
-5. After `list --config ./mcp.json`, run `inspect <name>` **without** repeating `--config`. Also try `analyze <name>`, `test` and `analyze` with no arguments, `benchmark` without `--out`, `competitors`, `build --demo` without `--out`, and `eval` if a model key is available in the environment or MCP Doctor's default per-user credential file. Do not inspect or print credential values, and do not create accounts.
+5. After `list --config ./mcp.json`, run `inspect <name>` **without** repeating `--config`. Also try `analyze <name>`, `test` and `analyze` with no arguments, `benchmark` without `--out`, `competitors`, `build --demo` without `--out`, and `eval`. Do not inspect or print credential values, and do not create accounts.
 6. Improve the MCP based on the tool's output. Re-run inspect after changes. Note what got better, what didn't, and what you still don't know how to fix.
 7. Maximize product feedback. Be specific and slightly adversarial. Quote exact CLI output, flags, error messages, and report sections. Do not be polite or vague.
 
+## Required eval sequence
+
+- The OpenRouter compatibility matrix is mandatory and must use these exact explicit model slugs:
+  `__MCP_DOCTOR_BLIND_MODELS__`
+- Before fixing the omitted inputSchema, run eval once and capture stdout/stderr in `eval-before.txt`. It must refuse before model execution with the human-readable missing-schema error.
+- After the fixes, run one read-only task that retrieves the known dummy record in your fixture through a named tool. Use `--models "__MCP_DOCTOR_BLIND_MODELS__"` and `--out ./eval-openrouter-matrix.md`.
+- Write the two inspect reports exactly as `inspect-before.md` and `inspect-after.md`.
+- Treat the run as failed if any provider lacks execution proof, if the displayed tool-call count differs from the replay, or if tool results are duplicated.
+
 ## Constraints
 
-- No API keys required unless a command clearly needs one; skip paid eval if it's blocked, and report that as feedback.
+- Load credentials only through MCP Doctor's default private credential file. OpenRouter eval is required; if it is blocked, report the blocker and do not claim completion.
 - Don't enable telemetry, waitlists, billing, or network posting of reports.
 - Don't "fix" the doctor CLI itself. Use it as a user.
 - Timebox implementation, not feedback: a working MCP + two inspect passes is enough. Spend extra effort on the critique.

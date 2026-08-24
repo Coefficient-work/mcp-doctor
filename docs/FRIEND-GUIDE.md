@@ -73,13 +73,15 @@ Public docs ([docs.vooma.ai](https://docs.vooma.ai)) list Agent Toolkits and Pub
 | Schema complexity | Deep JSON ? parameter mistakes |
 | Security smells | Credentials on GET, shell exec |
 
-**Not yet in v0.4 without API key:** agent eval requires `AI_GATEWAY_API_KEY` (Vercel AI Gateway free trial � BYOK). Static `inspect` and `benchmark` work without keys.
-
-Get a key: [vercel.com/ai-gateway](https://vercel.com/ai-gateway) ? create key ? `export AI_GATEWAY_API_KEY=...`
+**BYOK eval:** `inspect` needs no model key. `eval` accepts OpenRouter, OpenAI, Anthropic, Vercel AI Gateway, or Ollama credentials. For a cross-provider matrix, put an `OPENROUTER_API_KEY` in `~/.config/mcp-doctor/evaluation.env`, run `chmod 600` on that file, and use explicit `openrouter/...` model slugs.
 
 ```bash
-npx @coefficient-work/mcp-doctor@latest eval memory --task "List all tools" -o eval.md
+npx @coefficient-work/mcp-doctor@latest eval memory --task "List all tools" \
+  --models openrouter/openai/gpt-5.6-sol,openrouter/anthropic/claude-sonnet-5,openrouter/google/gemini-3.7-flash \
+  -o eval.md
 ```
+
+Execution proof means at least one real MCP tool returned a non-error result. It is not a formal semantic judge of arbitrary task completion. Credential values stay local, but the task, tool schemas, calls, and results are sent to the selected model provider.
 
 ## See real example reports
 

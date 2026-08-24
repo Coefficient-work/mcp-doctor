@@ -125,8 +125,7 @@ function expandDescription(tool) {
     return withTokenDelta(current, suggested);
 }
 function trimDescription(tool) {
-    const sentence = tool.description.replace(/\s+/g, " ").trim().slice(0, 200).replace(/\s+\S*$/, "");
-    const suggested = `${sentence.replace(/[.!?]?$/, ".")} Keep this under 80 characters of purpose plus when to choose the tool.`;
+    const suggested = `Rewrite \`${tool.name}\` as one complete sentence under 80 characters: state what it returns and when to choose it.`;
     return withTokenDelta(tool.description, suggested);
 }
 export function formatSuggestedFixes(fixes) {

@@ -4,13 +4,13 @@
 
 Open-source CLI — inspect, benchmark, and eval MCP servers before agents hit production.
 
-> *"We prove agents can actually use your MCP."*
+> *"Prove that models can execute your MCP, then see where schemas create friction."*
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Site](https://img.shields.io/badge/site-coefficient.work-black)](https://coefficient.work)
 
 ## Real benchmark results
 
-**[State of MCP Quality 2026 (v0)](examples/reports/STATE-OF-MCP-2026.md)** — 10 public servers scored live:
+**[State of MCP Quality 2026 (v0)](examples/reports/STATE-OF-MCP-2026.md)** — historical 2026-07-10 snapshot: 10 public servers attempted, 5 connected and scored. It is schema-readiness evidence, not behavioral proof:
 
 | Server | Grade | Tools | Tokens |
 |--------|-------|-------|--------|
@@ -33,7 +33,7 @@ Public package: `@coefficient-work/mcp-doctor`. Do not install the unrelated uns
 | Pillar | Command | Status |
 |--------|---------|--------|
 | **Static scorecard** | `inspect`, `test` | v0.4 |
-| **Task success** | `eval` (BYOK) | v0.4 |
+| **Execution proof** | `eval` (BYOK) | v0.4 |
 | **Agent friction** | included in `eval` | v0.4 |
 
 Plus: **Recommended Improvements**, **Replay Timeline**, **Model Compatibility Matrix** (multi-model eval).
@@ -48,11 +48,12 @@ npx @coefficient-work/mcp-doctor@latest benchmark
 npx @coefficient-work/mcp-doctor@latest list
 npx @coefficient-work/mcp-doctor@latest inspect <name> -o report.md
 
-# Agent eval (BYOK — keys stay local)
-export OPENAI_API_KEY=...   # or ANTHROPIC_API_KEY, OPENROUTER_API_KEY, AI_GATEWAY_API_KEY, OLLAMA_HOST
+# Cross-provider agent eval (BYOK — credential values stay local)
+export OPENROUTER_API_KEY=...
 npx @coefficient-work/mcp-doctor@latest eval memory \
   --task "List all tools and describe them" \
-  --models openai/gpt-4o-mini -o eval-report.md
+  --models openrouter/openai/gpt-5.6-sol,openrouter/anthropic/claude-sonnet-5,openrouter/google/gemini-3.7-flash \
+  -o eval-report.md
 ```
 
 ### Portable eval credentials (macOS/Linux)
@@ -79,8 +80,11 @@ OpenRouter uses its OpenAI-compatible endpoint through the Vercel AI SDK. Prefix
 export OPENROUTER_API_KEY=...
 npx @coefficient-work/mcp-doctor@latest eval memory \
   --task "List all tools and describe them" \
-  --model openrouter/openai/gpt-4o-mini -o eval-report.md
+  --models openrouter/openai/gpt-5.6-sol,openrouter/anthropic/claude-sonnet-5,openrouter/google/gemini-3.7-flash \
+  -o eval-report.md
 ```
+
+`eval` proves execution only when at least one MCP tool returns a non-error result. It does not formally prove that an arbitrary natural-language task was semantically completed. Credential values are not stored or printed, but eval necessarily sends the task, tool schemas, calls, and tool results to the selected model provider. `inspect` is local except for connecting to the MCP endpoint; `benchmark` launches or contacts every server in its catalog.
 
 ### AI Gateway setup (one-time)
 
@@ -104,7 +108,7 @@ See [`docs/FRIEND-GUIDE.md`](docs/FRIEND-GUIDE.md).
 | `benchmark` | State of MCP Quality — score catalog servers (writes files only with `--out`) |
 | `list` | MCP servers in `./mcp.json` or `~/.cursor/mcp.json` |
 | `inspect <name>` | Live connect + scorecard + suggested fixes (missing `inputSchema` -> Grade F, exit 2) |
-| `eval <name> --task "..."` | BYOK agent eval + friction + replay (OpenAI, Anthropic, Gateway, or Ollama) |
+| `eval <name> --task "..."` | BYOK execution proof + friction + replay (OpenRouter, OpenAI, Anthropic, Gateway, or Ollama) |
 | `test --demo` | Static scorecard on OpenAPI fixture |
 | `build --demo --out <dir>` | Write optimized MCP tool bundle (requires `--out`) |
 | `competitors` | Adjacent MCP tooling map |

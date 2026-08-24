@@ -27,7 +27,35 @@ export type BenchmarkRow = {
   transport: string;
   topIssue?: string;
   error?: string;
+  errorKind?: BenchmarkErrorKind;
 };
+
+export type BenchmarkErrorKind =
+  | "authentication"
+  | "launch"
+  | "network"
+  | "timeout"
+  | "transport"
+  | "unknown";
+
+export function classifyBenchmarkError(error: string): BenchmarkErrorKind {
+  if (/401|403|unauthori[sz]ed|forbidden|authentication|api[ _-]?key/i.test(error)) {
+    return "authentication";
+  }
+  if (/ENOENT|command not found|executable|spawn .* failed|could not determine executable/i.test(error)) {
+    return "launch";
+  }
+  if (/timed? out|timeout|deadline exceeded/i.test(error)) {
+    return "timeout";
+  }
+  if (/ENOTFOUND|EAI_AGAIN|DNS|network is unreachable|fetch failed/i.test(error)) {
+    return "network";
+  }
+  if (/connection (closed|refused|reset)|ECONNREFUSED|ECONNRESET|MCP error -32000/i.test(error)) {
+    return "transport";
+  }
+  return "unknown";
+}
 
 export type BenchmarkRunResult = {
   rows: BenchmarkRow[];
@@ -91,6 +119,7 @@ export async function runBenchmark(
       await session.close();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      const errorKind = classifyBenchmarkError(msg);
       rows.push({
         id: item.id,
         name: item.name,
@@ -101,6 +130,7 @@ export async function runBenchmark(
         connectMs: Date.now() - t0,
         transport: "n/a",
         error: msg,
+        errorKind,
       });
       reports.push({
         id: item.id,
@@ -154,7 +184,8 @@ export function formatStateOfMcpReport(rows: BenchmarkRow[], date = new Date().t
   if (failed.length > 0) {
     lines.push("", "## Connection failures", "");
     for (const f of failed) {
-      lines.push(`- **${f.name}:** ${f.error}`);
+      const kind = f.errorKind ?? classifyBenchmarkError(f.error ?? "");
+      lines.push(`- **${f.name}** [${kind}]: ${f.error}`);
     }
   }
 

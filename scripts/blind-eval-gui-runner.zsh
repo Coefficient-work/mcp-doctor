@@ -4,6 +4,7 @@ set -u
 sandbox="$1"
 state_dir="$2"
 agent_bin="$3"
+repo_root="$4"
 
 cd "$sandbox" || exit 90
 
@@ -22,5 +23,12 @@ fi
 prompt="$(cat "$sandbox/PROMPT.md")"
 "$agent_bin" -p --force --trust --workspace "$sandbox" "$prompt" > "$sandbox/agent.log" 2>&1
 agent_code=$?
+if [[ "$agent_code" -eq 0 && -f "$sandbox/REPORT.md" ]]; then
+  models="$(cat "$state_dir/models.txt")"
+  print "$(node -p "require('$repo_root/package.json').version")" > "$sandbox/package-version.txt"
+  print "MCP_DOCTOR_BLIND_MODELS=$models npm run blind-eval:gui" > "$sandbox/invocation.txt"
+  node "$repo_root/scripts/validate-blind-artifacts.mjs" "$sandbox" "$models" >> "$sandbox/agent.log" 2>&1
+  agent_code=$?
+fi
 print "$agent_code" > "$sandbox/agent.exit"
 exit "$agent_code"

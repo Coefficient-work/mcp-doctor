@@ -11,6 +11,7 @@ export type FrictionBreakdown = {
     score: number;
     retries: number;
     wrongToolCalls: number;
+    toolCalls: number;
     unnecessaryCalls: number;
     authRecovery: boolean;
     totalSteps: number;

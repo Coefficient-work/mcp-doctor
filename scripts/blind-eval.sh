@@ -6,6 +6,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROMPT_SRC="$ROOT/scripts/blind-eval-prompt.md"
 RUNNER="${MCP_DOCTOR_BLIND_RUNNER:-agent}"
+BLIND_MODELS="${MCP_DOCTOR_BLIND_MODELS:-openrouter/openai/gpt-5.6-sol,openrouter/anthropic/claude-sonnet-5,openrouter/google/gemini-3.7-flash}"
+CODEX_MODEL="${MCP_DOCTOR_BLIND_CODEX_MODEL:-gpt-5.6-sol}"
+CODEX_REASONING="${MCP_DOCTOR_BLIND_CODEX_REASONING_EFFORT:-medium}"
 
 cd "$ROOT"
 
@@ -17,7 +20,7 @@ TARBALL="$(ls -1 "$ROOT"/coefficient-work-mcp-doctor-*.tgz | head -n 1)"
 
 SANDBOX="$(mktemp -d /tmp/mcp-doctor-blind-XXXXXX)"
 cp "$TARBALL" "$SANDBOX/mcp-doctor.tgz"
-cp "$PROMPT_SRC" "$SANDBOX/PROMPT.md"
+sed "s|__MCP_DOCTOR_BLIND_MODELS__|$BLIND_MODELS|g" "$PROMPT_SRC" > "$SANDBOX/PROMPT.md"
 # Isolation: tarball + prompt only. No git, no AGENTS.md, no parent repo.
 echo "sandbox: $SANDBOX"
 
@@ -32,7 +35,20 @@ run_agent() {
         echo "sandbox left at $SANDBOX"
         return 2
       fi
-      (cd "$SANDBOX" && codex exec --skip-git-repo-check --cd "$SANDBOX" "$prompt") 2>&1 | tee "$AGENT_LOG"
+      (
+        cd "$SANDBOX"
+        export npm_config_cache="$SANDBOX/.npm-cache"
+        codex exec \
+          --skip-git-repo-check \
+          --cd "$SANDBOX" \
+          --ephemeral \
+          --ignore-user-config \
+          --ignore-rules \
+          --dangerously-bypass-approvals-and-sandbox \
+          --model "$CODEX_MODEL" \
+          --config "model_reasoning_effort=\"$CODEX_REASONING\"" \
+          "$prompt"
+      ) 2>&1 | tee "$AGENT_LOG"
       return "${PIPESTATUS[0]}"
       ;;
     agent|*)
@@ -58,7 +74,8 @@ agent_code=$?
 set -e
 
 if [[ "$agent_code" -eq 2 ]]; then
-  exit 0
+  echo "blind-eval FAIL: no isolated agent runner completed the required layer-2 gate" >&2
+  exit 1
 fi
 
 if [[ "$agent_code" -ne 0 ]]; then
@@ -98,9 +115,15 @@ if [[ -f "$REPORT" ]]; then
     echo "sandbox: $SANDBOX"
     exit 1
   fi
+  printf '%s\n' "$(node -p "require('./package.json').version")" > "$SANDBOX/package-version.txt"
+  printf '%s\n' \
+    "MCP_DOCTOR_BLIND_MODELS=$BLIND_MODELS MCP_DOCTOR_BLIND_CODEX_MODEL=$CODEX_MODEL MCP_DOCTOR_BLIND_CODEX_REASONING_EFFORT=$CODEX_REASONING npm run blind-eval" \
+    > "$SANDBOX/invocation.txt"
+  node "$ROOT/scripts/validate-blind-artifacts.mjs" "$SANDBOX" "$BLIND_MODELS"
   echo "blind-eval wrote $REPORT"
 else
-  echo "blind-eval: agent finished but REPORT.md was not written (sandbox $SANDBOX)"
+  echo "blind-eval FAIL: agent finished but REPORT.md was not written (sandbox $SANDBOX)" >&2
+  exit 1
 fi
 
 echo "sandbox: $SANDBOX"
